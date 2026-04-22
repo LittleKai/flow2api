@@ -7,263 +7,263 @@
 [![FastAPI](https://img.shields.io/badge/fastapi-0.119.0-green.svg)](https://fastapi.tiangolo.com/)
 [![Docker](https://img.shields.io/badge/docker-supported-blue.svg)](https://www.docker.com/)
 
-**一个功能完整的 OpenAI 兼容 API 服务，为 Flow 提供统一的接口**
+**Dịch vụ API tương thích OpenAI đầy đủ tính năng, cung cấp giao diện thống nhất cho Flow**
 
 </div>
 
-## ✨ 核心特性
+## ✨ Tính năng cốt lõi
 
-- 🎨 **文生图** / **图生图**
-- 🎬 **文生视频** / **图生视频**
-- 🎞️ **首尾帧视频**
-- 🔄 **AT/ST自动刷新** - AT 过期自动刷新，ST 过期时自动通过浏览器更新（personal 模式）
-- 📊 **余额显示** - 实时查询和显示 VideoFX Credits
-- 🚀 **负载均衡** - 多 Token 轮询和并发控制
-- 🌐 **代理支持** - 支持 HTTP/SOCKS5 代理
-- 📱 **Web 管理界面** - 直观的 Token 和配置管理
-- 🎨 **图片生成连续对话**
-- 🧩 **Gemini 官方请求体兼容** - 支持 `generateContent` / `streamGenerateContent`、`systemInstruction`、`contents.parts.text/inlineData/fileData`
-- ✅ **Gemini 官方格式已实测出图** - 已使用真实 Token 验证 `/models/{model}:generateContent` 可正常返回官方 `candidates[].content.parts[].inlineData`
+- 🎨 **Text-to-Image (Tạo ảnh từ văn bản)** / **Image-to-Image (Tạo ảnh từ ảnh)**
+- 🎬 **Text-to-Video (Tạo video từ văn bản)** / **Image-to-Video (Tạo video từ ảnh)**
+- 🎞️ **Video khung đầu/cuối (First/Last Frame)**
+- 🔄 **Tự động refresh AT/ST** - AT hết hạn tự động làm mới, ST hết hạn tự động cập nhật qua trình duyệt (chế độ personal)
+- 📊 **Hiển thị số dư** - Truy vấn và hiển thị VideoFX Credits theo thời gian thực
+- 🚀 **Cân bằng tải (Load Balancing)** - Xoay vòng nhiều Token và kiểm soát đồng thời
+- 🌐 **Hỗ trợ Proxy** - Hỗ trợ proxy HTTP/SOCKS5
+- 📱 **Giao diện quản trị Web** - Quản lý Token và cấu hình trực quan
+- 🎨 **Hội thoại liên tục khi tạo ảnh**
+- 🧩 **Tương thích request chính thức của Gemini** - Hỗ trợ `generateContent` / `streamGenerateContent`, `systemInstruction`, `contents.parts.text/inlineData/fileData`
+- ✅ **Format chính thức Gemini đã kiểm chứng tạo ảnh thực tế** - Đã dùng Token thật xác minh `/models/{model}:generateContent` trả về đúng `candidates[].content.parts[].inlineData` theo format chính thức
 
-## 🚀 快速开始
+## 🚀 Bắt đầu nhanh
 
-### 前置要求
+### Yêu cầu trước khi cài
 
-- Docker 和 Docker Compose（推荐）
-- 或 Python 3.8+
+- Docker và Docker Compose (khuyến nghị)
+- Hoặc Python 3.8+
 
-- 由于Flow增加了额外的验证码，你可以自行选择使用浏览器打码或第三发打码：
-注册[YesCaptcha](https://yescaptcha.com/i/13Xd8K)并获取api key，将其填入系统配置页面```YesCaptcha API密钥```区域
-- 默认 `docker-compose.yml` 建议搭配第三方打码（yescaptcha/capmonster/ezcaptcha/capsolver）。
-如需 Docker 内有头打码（browser/personal），请使用下方 `docker-compose.headed.yml`。
+- Do Flow có thêm lớp xác thực captcha, bạn có thể chọn dùng captcha bằng trình duyệt hoặc dịch vụ giải captcha bên thứ ba:
+Đăng ký [YesCaptcha](https://yescaptcha.com/i/13Xd8K) để lấy api key, sau đó điền vào mục ```YesCaptcha API Key``` trong trang cấu hình hệ thống.
+- File `docker-compose.yml` mặc định khuyến nghị dùng kèm dịch vụ bên thứ ba (yescaptcha/capmonster/ezcaptcha/capsolver).
+Nếu cần captcha bằng trình duyệt có giao diện (browser/personal) trong Docker, hãy dùng file `docker-compose.headed.yml` bên dưới.
 
-- 自动更新st浏览器拓展：[Flow2API-Token-Updater](https://github.com/TheSmallHanCat/Flow2API-Token-Updater)
+- Extension trình duyệt tự động cập nhật ST: [Flow2API-Token-Updater](https://github.com/TheSmallHanCat/Flow2API-Token-Updater)
 
-### 方式一：Docker 部署（推荐）
+### Cách 1: Triển khai bằng Docker (khuyến nghị)
 
-#### 标准模式（不使用代理）
+#### Chế độ chuẩn (không dùng proxy)
 
 ```bash
-# 克隆项目
+# Clone dự án
 git clone https://github.com/TheSmallHanCat/flow2api.git
 cd flow2api
 
-# 启动服务
+# Khởi động dịch vụ
 docker-compose up -d
 
-# 查看日志
+# Xem log
 docker-compose logs -f
 ```
 
-> 说明：Compose 已默认挂载 `./tmp:/app/tmp`。如果把缓存超时设为 `0`，语义是“不自动过期删除”；若希望容器重建后仍保留缓存文件，也需要保留这个 `tmp` 挂载。
+> Lưu ý: Compose đã mặc định mount `./tmp:/app/tmp`. Nếu đặt timeout cache là `0`, nghĩa là "không tự động hết hạn xóa"; nếu muốn file cache được giữ lại sau khi build lại container, cũng cần giữ mount `tmp` này.
 
-#### WARP 模式（使用代理）
+#### Chế độ WARP (dùng proxy)
 
 ```bash
-# 使用 WARP 代理启动
+# Khởi động với proxy WARP
 docker-compose -f docker-compose.warp.yml up -d
 
-# 查看日志
+# Xem log
 docker-compose -f docker-compose.warp.yml logs -f
 ```
 
-#### Docker 有头打码模式（browser / personal）
+#### Chế độ Docker headed captcha (browser / personal)
 
-> 适用于你有虚拟化桌面需求、希望在容器里启用有头浏览器打码的场景。  
-> 该模式默认启动 `Xvfb + Fluxbox` 实现容器内部可视化，并设置 `ALLOW_DOCKER_HEADED_CAPTCHA=true`。  
-> 仅开放应用端口，不提供任何远程桌面连接端口。
-> `personal` 内置浏览器现在默认按有头模式启动；如需临时切回无头，可额外设置环境变量 `PERSONAL_BROWSER_HEADLESS=true`。
+> Phù hợp khi bạn cần desktop ảo hóa và muốn dùng captcha trình duyệt có giao diện trong container.
+> Chế độ này mặc định khởi động `Xvfb + Fluxbox` để hiển thị trong container, và đặt `ALLOW_DOCKER_HEADED_CAPTCHA=true`.
+> Chỉ mở port ứng dụng, không cung cấp bất kỳ port remote desktop nào.
+> Trình duyệt tích hợp `personal` hiện mặc định khởi động ở chế độ có giao diện (headed); nếu muốn tạm thời chuyển về headless, có thể đặt biến môi trường `PERSONAL_BROWSER_HEADLESS=true`.
 
 ```bash
-# 启动有头模式（首次建议带 --build）
+# Khởi động chế độ headed (lần đầu khuyến nghị kèm --build)
 docker compose -f docker-compose.headed.yml up -d --build
 
-# 查看日志
+# Xem log
 docker compose -f docker-compose.headed.yml logs -f
 ```
 
-- API 端口：`8000`
-- 进入管理后台后，将验证码方式设为 `browser` 或 `personal`
+- Port API: `8000`
+- Sau khi vào trang quản trị, đặt phương thức captcha thành `browser` hoặc `personal`
 
-### 方式二：本地部署
+### Cách 2: Triển khai cục bộ
 
 ```bash
-# 克隆项目
+# Clone dự án
 git clone https://github.com/TheSmallHanCat/flow2api.git
 cd flow2api
 
-# 创建虚拟环境
+# Tạo môi trường ảo
 python -m venv venv
 
-# 激活虚拟环境
+# Kích hoạt môi trường ảo
 # Windows
 venv\Scripts\activate
 # Linux/Mac
 source venv/bin/activate
 
-# 安装依赖
+# Cài đặt dependencies
 pip install -r requirements.txt
 
-# 启动服务
+# Khởi động dịch vụ
 python main.py
 ```
 
-### 首次访问
+### Truy cập lần đầu
 
-服务启动后,访问管理后台: **http://localhost:8000**,首次登录后请立即修改密码!
+Sau khi dịch vụ khởi động, truy cập trang quản trị: **http://localhost:8000**, hãy đổi mật khẩu ngay sau khi đăng nhập lần đầu!
 
-- **用户名**: `admin`
-- **密码**: `admin`
+- **Tên đăng nhập**: `admin`
+- **Mật khẩu**: `admin`
 
-### 模型测试页面
+### Trang test model
 
-访问 **http://localhost:8000/test** 可打开内置的模型测试页面，支持：
+Truy cập **http://localhost:8000/test** để mở trang test model tích hợp sẵn, hỗ trợ:
 
-- 按分类浏览所有可用模型（图片生成、文/图生视频、多图视频、视频放大等）
-- 输入提示词一键测试，流式显示生成进度
-- 图生图 / 图生视频场景支持上传图片
-- 生成完成后直接预览图片或视频
+- Duyệt tất cả model khả dụng theo phân loại (tạo ảnh, text/image sang video, video nhiều ảnh, upscale video, v.v.)
+- Nhập prompt để test nhanh, hiển thị tiến trình tạo theo dạng streaming
+- Kịch bản image-to-image / image-to-video hỗ trợ upload ảnh
+- Xem trực tiếp ảnh hoặc video sau khi tạo xong
 
-## 📋 支持的模型
+## 📋 Các model được hỗ trợ
 
-### 图片生成
+### Tạo ảnh
 
-| 模型名称 | 说明| 尺寸 |
+| Tên model | Mô tả | Kích thước |
 |---------|--------|--------|
-| `gemini-2.5-flash-image-landscape` | 图/文生图 | 横屏 |
-| `gemini-2.5-flash-image-portrait` | 图/文生图 | 竖屏 |
-| `gemini-3.0-pro-image-landscape` | 图/文生图 | 横屏 |
-| `gemini-3.0-pro-image-portrait` | 图/文生图 | 竖屏 |
-| `gemini-3.0-pro-image-square` | 图/文生图 | 方图 |
-| `gemini-3.0-pro-image-four-three` | 图/文生图 | 横屏 4:3 |
-| `gemini-3.0-pro-image-three-four` | 图/文生图 | 竖屏 3:4 |
-| `gemini-3.0-pro-image-landscape-2k` | 图/文生图(2K) | 横屏 |
-| `gemini-3.0-pro-image-portrait-2k` | 图/文生图(2K) | 竖屏 |
-| `gemini-3.0-pro-image-square-2k` | 图/文生图(2K) | 方图 |
-| `gemini-3.0-pro-image-four-three-2k` | 图/文生图(2K) | 横屏 4:3 |
-| `gemini-3.0-pro-image-three-four-2k` | 图/文生图(2K) | 竖屏 3:4 |
-| `gemini-3.0-pro-image-landscape-4k` | 图/文生图(4K) | 横屏 |
-| `gemini-3.0-pro-image-portrait-4k` | 图/文生图(4K) | 竖屏 |
-| `gemini-3.0-pro-image-square-4k` | 图/文生图(4K) | 方图 |
-| `gemini-3.0-pro-image-four-three-4k` | 图/文生图(4K) | 横屏 4:3 |
-| `gemini-3.0-pro-image-three-four-4k` | 图/文生图(4K) | 竖屏 3:4 |
-| `imagen-4.0-generate-preview-landscape` | 图/文生图 | 横屏 |
-| `imagen-4.0-generate-preview-portrait` | 图/文生图 | 竖屏 |
-| `gemini-3.1-flash-image-landscape` | 图/文生图 | 横屏 |
-| `gemini-3.1-flash-image-portrait` | 图/文生图 | 竖屏 |
-| `gemini-3.1-flash-image-square` | 图/文生图 | 方图 |
-| `gemini-3.1-flash-image-four-three` | 图/文生图 | 横屏 4:3 |
-| `gemini-3.1-flash-image-three-four` | 图/文生图 | 竖屏 3:4 |
-| `gemini-3.1-flash-image-landscape-2k` | 图/文生图(2K) | 横屏 |
-| `gemini-3.1-flash-image-portrait-2k` | 图/文生图(2K) | 竖屏 |
-| `gemini-3.1-flash-image-square-2k` | 图/文生图(2K) | 方图 |
-| `gemini-3.1-flash-image-four-three-2k` | 图/文生图(2K) | 横屏 4:3 |
-| `gemini-3.1-flash-image-three-four-2k` | 图/文生图(2K) | 竖屏 3:4 |
-| `gemini-3.1-flash-image-landscape-4k` | 图/文生图(4K) | 横屏 |
-| `gemini-3.1-flash-image-portrait-4k` | 图/文生图(4K) | 竖屏 |
-| `gemini-3.1-flash-image-square-4k` | 图/文生图(4K) | 方图 |
-| `gemini-3.1-flash-image-four-three-4k` | 图/文生图(4K) | 横屏 4:3 |
-| `gemini-3.1-flash-image-three-four-4k` | 图/文生图(4K) | 竖屏 3:4 |
+| `gemini-2.5-flash-image-landscape` | Image/Text-to-Image | Ngang |
+| `gemini-2.5-flash-image-portrait` | Image/Text-to-Image | Dọc |
+| `gemini-3.0-pro-image-landscape` | Image/Text-to-Image | Ngang |
+| `gemini-3.0-pro-image-portrait` | Image/Text-to-Image | Dọc |
+| `gemini-3.0-pro-image-square` | Image/Text-to-Image | Vuông |
+| `gemini-3.0-pro-image-four-three` | Image/Text-to-Image | Ngang 4:3 |
+| `gemini-3.0-pro-image-three-four` | Image/Text-to-Image | Dọc 3:4 |
+| `gemini-3.0-pro-image-landscape-2k` | Image/Text-to-Image (2K) | Ngang |
+| `gemini-3.0-pro-image-portrait-2k` | Image/Text-to-Image (2K) | Dọc |
+| `gemini-3.0-pro-image-square-2k` | Image/Text-to-Image (2K) | Vuông |
+| `gemini-3.0-pro-image-four-three-2k` | Image/Text-to-Image (2K) | Ngang 4:3 |
+| `gemini-3.0-pro-image-three-four-2k` | Image/Text-to-Image (2K) | Dọc 3:4 |
+| `gemini-3.0-pro-image-landscape-4k` | Image/Text-to-Image (4K) | Ngang |
+| `gemini-3.0-pro-image-portrait-4k` | Image/Text-to-Image (4K) | Dọc |
+| `gemini-3.0-pro-image-square-4k` | Image/Text-to-Image (4K) | Vuông |
+| `gemini-3.0-pro-image-four-three-4k` | Image/Text-to-Image (4K) | Ngang 4:3 |
+| `gemini-3.0-pro-image-three-four-4k` | Image/Text-to-Image (4K) | Dọc 3:4 |
+| `imagen-4.0-generate-preview-landscape` | Image/Text-to-Image | Ngang |
+| `imagen-4.0-generate-preview-portrait` | Image/Text-to-Image | Dọc |
+| `gemini-3.1-flash-image-landscape` | Image/Text-to-Image | Ngang |
+| `gemini-3.1-flash-image-portrait` | Image/Text-to-Image | Dọc |
+| `gemini-3.1-flash-image-square` | Image/Text-to-Image | Vuông |
+| `gemini-3.1-flash-image-four-three` | Image/Text-to-Image | Ngang 4:3 |
+| `gemini-3.1-flash-image-three-four` | Image/Text-to-Image | Dọc 3:4 |
+| `gemini-3.1-flash-image-landscape-2k` | Image/Text-to-Image (2K) | Ngang |
+| `gemini-3.1-flash-image-portrait-2k` | Image/Text-to-Image (2K) | Dọc |
+| `gemini-3.1-flash-image-square-2k` | Image/Text-to-Image (2K) | Vuông |
+| `gemini-3.1-flash-image-four-three-2k` | Image/Text-to-Image (2K) | Ngang 4:3 |
+| `gemini-3.1-flash-image-three-four-2k` | Image/Text-to-Image (2K) | Dọc 3:4 |
+| `gemini-3.1-flash-image-landscape-4k` | Image/Text-to-Image (4K) | Ngang |
+| `gemini-3.1-flash-image-portrait-4k` | Image/Text-to-Image (4K) | Dọc |
+| `gemini-3.1-flash-image-square-4k` | Image/Text-to-Image (4K) | Vuông |
+| `gemini-3.1-flash-image-four-three-4k` | Image/Text-to-Image (4K) | Ngang 4:3 |
+| `gemini-3.1-flash-image-three-four-4k` | Image/Text-to-Image (4K) | Dọc 3:4 |
 
-### 视频生成
+### Tạo video
 
-#### 文生视频 (T2V - Text to Video)
-⚠️ **不支持上传图片**
+#### Text-to-Video (T2V)
+⚠️ **Không hỗ trợ upload ảnh**
 
-| 模型名称 | 说明| 尺寸 |
+| Tên model | Mô tả | Kích thước |
 |---------|---------|--------|
-| `veo_3_1_t2v_fast_portrait` | 文生视频 | 竖屏 |
-| `veo_3_1_t2v_fast_landscape` | 文生视频 | 横屏 |
-| `veo_3_1_t2v_fast_portrait_ultra` | 文生视频 | 竖屏 |
-| `veo_3_1_t2v_fast_ultra` | 文生视频 | 横屏 |
-| `veo_3_1_t2v_fast_portrait_ultra_relaxed` | 文生视频 | 竖屏 |
-| `veo_3_1_t2v_fast_ultra_relaxed` | 文生视频 | 横屏 |
-| `veo_3_1_t2v_portrait` | 文生视频 | 竖屏 |
-| `veo_3_1_t2v_landscape` | 文生视频 | 横屏 |
-| `veo_3_1_t2v_lite_portrait` | 文生视频 Lite | 竖屏 |
-| `veo_3_1_t2v_lite_landscape` | 文生视频 Lite | 横屏 |
+| `veo_3_1_t2v_fast_portrait` | Text-to-Video | Dọc |
+| `veo_3_1_t2v_fast_landscape` | Text-to-Video | Ngang |
+| `veo_3_1_t2v_fast_portrait_ultra` | Text-to-Video | Dọc |
+| `veo_3_1_t2v_fast_ultra` | Text-to-Video | Ngang |
+| `veo_3_1_t2v_fast_portrait_ultra_relaxed` | Text-to-Video | Dọc |
+| `veo_3_1_t2v_fast_ultra_relaxed` | Text-to-Video | Ngang |
+| `veo_3_1_t2v_portrait` | Text-to-Video | Dọc |
+| `veo_3_1_t2v_landscape` | Text-to-Video | Ngang |
+| `veo_3_1_t2v_lite_portrait` | Text-to-Video Lite | Dọc |
+| `veo_3_1_t2v_lite_landscape` | Text-to-Video Lite | Ngang |
 
-#### 首尾帧模型 (I2V - Image to Video)
-📸 **支持1-2张图片：1张作为首帧，2张作为首尾帧**
+#### Model khung đầu/cuối (I2V - Image to Video)
+📸 **Hỗ trợ 1-2 ảnh: 1 ảnh làm khung đầu, 2 ảnh làm khung đầu + khung cuối**
 
-> 💡 **自动适配**：系统会根据图片数量自动选择对应的 model_key
-> - **单帧模式**（1张图）：使用首帧生成视频
-> - **双帧模式**（2张图）：使用首帧+尾帧生成过渡视频
-> - `veo_3_1_i2v_lite_*` 仅支持 **1 张** 首帧图片
-> - `veo_3_1_interpolation_lite_*` 仅支持 **2 张** 首尾帧图片
+> 💡 **Tự động thích ứng**: Hệ thống sẽ tự chọn model_key tương ứng theo số lượng ảnh
+> - **Chế độ 1 khung** (1 ảnh): Dùng khung đầu để tạo video
+> - **Chế độ 2 khung** (2 ảnh): Dùng khung đầu + khung cuối để tạo video chuyển cảnh
+> - `veo_3_1_i2v_lite_*` chỉ hỗ trợ **1 ảnh** khung đầu
+> - `veo_3_1_interpolation_lite_*` chỉ hỗ trợ **2 ảnh** khung đầu + khung cuối
 
-| 模型名称 | 说明| 尺寸 |
+| Tên model | Mô tả | Kích thước |
 |---------|---------|--------|
-| `veo_3_1_i2v_s_fast_portrait_fl` | 图生视频 | 竖屏 |
-| `veo_3_1_i2v_s_fast_fl` | 图生视频 | 横屏 |
-| `veo_3_1_i2v_s_fast_portrait_ultra_fl` | 图生视频 | 竖屏 |
-| `veo_3_1_i2v_s_fast_ultra_fl` | 图生视频 | 横屏 |
-| `veo_3_1_i2v_s_fast_portrait_ultra_relaxed` | 图生视频 | 竖屏 |
-| `veo_3_1_i2v_s_fast_ultra_relaxed` | 图生视频 | 横屏 |
-| `veo_3_1_i2v_s_portrait` | 图生视频 | 竖屏 |
-| `veo_3_1_i2v_s_landscape` | 图生视频 | 横屏 |
-| `veo_3_1_i2v_lite_portrait` | 图生视频 Lite（仅首帧） | 竖屏 |
-| `veo_3_1_i2v_lite_landscape` | 图生视频 Lite（仅首帧） | 横屏 |
-| `veo_3_1_interpolation_lite_portrait` | 图生视频 Lite（首尾帧过渡） | 竖屏 |
-| `veo_3_1_interpolation_lite_landscape` | 图生视频 Lite（首尾帧过渡） | 横屏 |
+| `veo_3_1_i2v_s_fast_portrait_fl` | Image-to-Video | Dọc |
+| `veo_3_1_i2v_s_fast_fl` | Image-to-Video | Ngang |
+| `veo_3_1_i2v_s_fast_portrait_ultra_fl` | Image-to-Video | Dọc |
+| `veo_3_1_i2v_s_fast_ultra_fl` | Image-to-Video | Ngang |
+| `veo_3_1_i2v_s_fast_portrait_ultra_relaxed` | Image-to-Video | Dọc |
+| `veo_3_1_i2v_s_fast_ultra_relaxed` | Image-to-Video | Ngang |
+| `veo_3_1_i2v_s_portrait` | Image-to-Video | Dọc |
+| `veo_3_1_i2v_s_landscape` | Image-to-Video | Ngang |
+| `veo_3_1_i2v_lite_portrait` | Image-to-Video Lite (chỉ khung đầu) | Dọc |
+| `veo_3_1_i2v_lite_landscape` | Image-to-Video Lite (chỉ khung đầu) | Ngang |
+| `veo_3_1_interpolation_lite_portrait` | Image-to-Video Lite (chuyển cảnh đầu/cuối) | Dọc |
+| `veo_3_1_interpolation_lite_landscape` | Image-to-Video Lite (chuyển cảnh đầu/cuối) | Ngang |
 
-#### 多图生成 (R2V - Reference Images to Video)
-🖼️ **支持多张图片**
+#### Tạo video từ nhiều ảnh (R2V - Reference Images to Video)
+🖼️ **Hỗ trợ nhiều ảnh**
 
-> **2026-03-06 更新**
+> **Cập nhật 2026-03-06**
 >
-> - 已同步上游新版 `R2V` 视频请求体
-> - `textInput` 已切换为 `structuredPrompt.parts`
-> - 顶层新增 `mediaGenerationContext.batchId`
-> - 顶层新增 `useV2ModelConfig: true`
-> - 横屏 / 竖屏 `R2V` 模型共用同一套新版请求体
-> - 横屏 `R2V` 的上游 `videoModelKey` 已切换为 `*_landscape` 形式
-> - 根据当前上游协议，`referenceImages` 当前最多传 **3 张**
+> - Đã đồng bộ request body `R2V` phiên bản mới từ upstream
+> - `textInput` đã chuyển sang `structuredPrompt.parts`
+> - Thêm `mediaGenerationContext.batchId` ở cấp cao nhất
+> - Thêm `useV2ModelConfig: true` ở cấp cao nhất
+> - Model `R2V` ngang / dọc dùng chung một request body phiên bản mới
+> - `videoModelKey` upstream của `R2V` ngang đã chuyển sang dạng `*_landscape`
+> - Theo giao thức upstream hiện tại, `referenceImages` hiện tối đa **3 ảnh**
 
-| 模型名称 | 说明| 尺寸 |
+| Tên model | Mô tả | Kích thước |
 |---------|---------|--------|
-| `veo_3_1_r2v_fast_portrait` | 图生视频 | 竖屏 |
-| `veo_3_1_r2v_fast` | 图生视频 | 横屏 |
-| `veo_3_1_r2v_fast_portrait_ultra` | 图生视频 | 竖屏 |
-| `veo_3_1_r2v_fast_ultra` | 图生视频 | 横屏 |
-| `veo_3_1_r2v_fast_portrait_ultra_relaxed` | 图生视频 | 竖屏 |
-| `veo_3_1_r2v_fast_ultra_relaxed` | 图生视频 | 横屏 |
+| `veo_3_1_r2v_fast_portrait` | Image-to-Video | Dọc |
+| `veo_3_1_r2v_fast` | Image-to-Video | Ngang |
+| `veo_3_1_r2v_fast_portrait_ultra` | Image-to-Video | Dọc |
+| `veo_3_1_r2v_fast_ultra` | Image-to-Video | Ngang |
+| `veo_3_1_r2v_fast_portrait_ultra_relaxed` | Image-to-Video | Dọc |
+| `veo_3_1_r2v_fast_ultra_relaxed` | Image-to-Video | Ngang |
 
-#### 视频放大模型 (Upsample)
+#### Model nâng cấp video (Upsample)
 
-| 模型名称 | 说明 | 输出 |
+| Tên model | Mô tả | Đầu ra |
 |---------|---------|--------|
-| `veo_3_1_t2v_fast_portrait_4k` | 文生视频放大 | 4K |
-| `veo_3_1_t2v_fast_4k` | 文生视频放大 | 4K |
-| `veo_3_1_t2v_fast_portrait_ultra_4k` | 文生视频放大 | 4K |
-| `veo_3_1_t2v_fast_ultra_4k` | 文生视频放大 | 4K |
-| `veo_3_1_t2v_fast_portrait_1080p` | 文生视频放大 | 1080P |
-| `veo_3_1_t2v_fast_1080p` | 文生视频放大 | 1080P |
-| `veo_3_1_t2v_fast_portrait_ultra_1080p` | 文生视频放大 | 1080P |
-| `veo_3_1_t2v_fast_ultra_1080p` | 文生视频放大 | 1080P |
-| `veo_3_1_i2v_s_fast_portrait_ultra_fl_4k` | 图生视频放大 | 4K |
-| `veo_3_1_i2v_s_fast_ultra_fl_4k` | 图生视频放大 | 4K |
-| `veo_3_1_i2v_s_fast_portrait_ultra_fl_1080p` | 图生视频放大 | 1080P |
-| `veo_3_1_i2v_s_fast_ultra_fl_1080p` | 图生视频放大 | 1080P |
-| `veo_3_1_r2v_fast_portrait_ultra_4k` | 多图视频放大 | 4K |
-| `veo_3_1_r2v_fast_ultra_4k` | 多图视频放大 | 4K |
-| `veo_3_1_r2v_fast_portrait_ultra_1080p` | 多图视频放大 | 1080P |
-| `veo_3_1_r2v_fast_ultra_1080p` | 多图视频放大 | 1080P |
+| `veo_3_1_t2v_fast_portrait_4k` | Upscale Text-to-Video | 4K |
+| `veo_3_1_t2v_fast_4k` | Upscale Text-to-Video | 4K |
+| `veo_3_1_t2v_fast_portrait_ultra_4k` | Upscale Text-to-Video | 4K |
+| `veo_3_1_t2v_fast_ultra_4k` | Upscale Text-to-Video | 4K |
+| `veo_3_1_t2v_fast_portrait_1080p` | Upscale Text-to-Video | 1080P |
+| `veo_3_1_t2v_fast_1080p` | Upscale Text-to-Video | 1080P |
+| `veo_3_1_t2v_fast_portrait_ultra_1080p` | Upscale Text-to-Video | 1080P |
+| `veo_3_1_t2v_fast_ultra_1080p` | Upscale Text-to-Video | 1080P |
+| `veo_3_1_i2v_s_fast_portrait_ultra_fl_4k` | Upscale Image-to-Video | 4K |
+| `veo_3_1_i2v_s_fast_ultra_fl_4k` | Upscale Image-to-Video | 4K |
+| `veo_3_1_i2v_s_fast_portrait_ultra_fl_1080p` | Upscale Image-to-Video | 1080P |
+| `veo_3_1_i2v_s_fast_ultra_fl_1080p` | Upscale Image-to-Video | 1080P |
+| `veo_3_1_r2v_fast_portrait_ultra_4k` | Upscale video nhiều ảnh | 4K |
+| `veo_3_1_r2v_fast_ultra_4k` | Upscale video nhiều ảnh | 4K |
+| `veo_3_1_r2v_fast_portrait_ultra_1080p` | Upscale video nhiều ảnh | 1080P |
+| `veo_3_1_r2v_fast_ultra_1080p` | Upscale video nhiều ảnh | 1080P |
 
-## 📡 API 使用示例（需要使用流式）
+## 📡 Ví dụ sử dụng API (phải dùng streaming)
 
-> 除了下方 `OpenAI-compatible` 示例，服务也支持 Gemini 官方格式：
+> Ngoài ví dụ `OpenAI-compatible` bên dưới, dịch vụ còn hỗ trợ format chính thức của Gemini:
 > - `POST /v1beta/models/{model}:generateContent`
 > - `POST /models/{model}:generateContent`
 > - `POST /v1beta/models/{model}:streamGenerateContent`
 > - `POST /models/{model}:streamGenerateContent`
 >
-> Gemini 官方格式支持以下认证方式：
+> Format chính thức Gemini hỗ trợ các phương thức xác thực sau:
 > - `Authorization: Bearer <api_key>`
 > - `x-goog-api-key: <api_key>`
 > - `?key=<api_key>`
 >
-> Gemini 官方图片请求体已兼容：
+> Request body ảnh theo format chính thức Gemini đã tương thích:
 > - `systemInstruction`
 > - `contents[].parts[].text`
 > - `contents[].parts[].inlineData`
@@ -272,10 +272,10 @@ python main.py
 > - `generationConfig.imageConfig.aspectRatio`
 > - `generationConfig.imageConfig.imageSize`
 
-### Gemini 官方 generateContent（文生图）
+### generateContent chính thức Gemini (text-to-image)
 
-> 已使用真实 Token 实测通过。
-> 如需流式返回，可将路径替换为 `:streamGenerateContent?alt=sse`。
+> Đã kiểm chứng bằng Token thật.
+> Nếu cần trả về streaming, có thể thay đường dẫn thành `:streamGenerateContent?alt=sse`.
 
 ```bash
 curl -X POST "http://localhost:8000/models/gemini-3.1-flash-image:generateContent" \
@@ -294,7 +294,7 @@ curl -X POST "http://localhost:8000/models/gemini-3.1-flash-image:generateConten
         "role": "user",
         "parts": [
           {
-            "text": "一颗放在木桌上的红苹果，棚拍光线，极简背景"
+            "text": "Một quả táo đỏ đặt trên bàn gỗ, ánh sáng studio, nền tối giản"
           }
         ]
       }
@@ -309,7 +309,7 @@ curl -X POST "http://localhost:8000/models/gemini-3.1-flash-image:generateConten
   }'
 ```
 
-### 文生图
+### Text-to-Image
 
 ```bash
 curl -X POST "http://localhost:8000/v1/chat/completions" \
@@ -320,14 +320,14 @@ curl -X POST "http://localhost:8000/v1/chat/completions" \
     "messages": [
       {
         "role": "user",
-        "content": "一只可爱的猫咪在花园里玩耍"
+        "content": "Một chú mèo đáng yêu đang chơi đùa trong vườn hoa"
       }
     ],
     "stream": true
   }'
 ```
 
-### 图生图
+### Image-to-Image
 
 ```bash
 curl -X POST "http://localhost:8000/v1/chat/completions" \
@@ -341,7 +341,7 @@ curl -X POST "http://localhost:8000/v1/chat/completions" \
         "content": [
           {
             "type": "text",
-            "text": "将这张图片变成水彩画风格"
+            "text": "Biến ảnh này thành phong cách tranh màu nước"
           },
           {
             "type": "image_url",
@@ -356,7 +356,7 @@ curl -X POST "http://localhost:8000/v1/chat/completions" \
   }'
 ```
 
-### 文生视频
+### Text-to-Video
 
 ```bash
 curl -X POST "http://localhost:8000/v1/chat/completions" \
@@ -367,14 +367,14 @@ curl -X POST "http://localhost:8000/v1/chat/completions" \
     "messages": [
       {
         "role": "user",
-        "content": "一只小猫在草地上追逐蝴蝶"
+        "content": "Một chú mèo con đang đuổi bướm trên bãi cỏ"
       }
     ],
     "stream": true
   }'
 ```
 
-### 首尾帧生成视频
+### Tạo video từ khung đầu/cuối
 
 ```bash
 curl -X POST "http://localhost:8000/v1/chat/completions" \
@@ -388,18 +388,18 @@ curl -X POST "http://localhost:8000/v1/chat/completions" \
         "content": [
           {
             "type": "text",
-            "text": "从第一张图过渡到第二张图"
+            "text": "Chuyển cảnh từ ảnh thứ nhất sang ảnh thứ hai"
           },
           {
             "type": "image_url",
             "image_url": {
-              "url": "data:image/jpeg;base64,<首帧base64>"
+              "url": "data:image/jpeg;base64,<base64_khung_đầu>"
             }
           },
           {
             "type": "image_url",
             "image_url": {
-              "url": "data:image/jpeg;base64,<尾帧base64>"
+              "url": "data:image/jpeg;base64,<base64_khung_cuối>"
             }
           }
         ]
@@ -409,11 +409,11 @@ curl -X POST "http://localhost:8000/v1/chat/completions" \
   }'
 ```
 
-### 多图生成视频
+### Tạo video từ nhiều ảnh
 
-> `R2V` 会由服务端自动组装新版视频请求体，调用方仍然使用 OpenAI 兼容输入即可。
-> 服务端会将横屏 `R2V` 自动映射到最新的 `*_landscape` 上游模型键。
-> 当前最多传 **3 张参考图**。
+> `R2V` sẽ được server tự động lắp request body video phiên bản mới, bên gọi vẫn dùng input tương thích OpenAI như bình thường.
+> Server sẽ tự map `R2V` ngang sang upstream model key `*_landscape` mới nhất.
+> Hiện tối đa **3 ảnh tham chiếu**.
 
 ```bash
 curl -X POST "http://localhost:8000/v1/chat/completions" \
@@ -427,24 +427,24 @@ curl -X POST "http://localhost:8000/v1/chat/completions" \
         "content": [
           {
             "type": "text",
-            "text": "以三张参考图的人物和场景为基础，生成一段镜头平滑推进的竖屏视频"
+            "text": "Dựa trên nhân vật và bối cảnh từ ba ảnh tham chiếu, tạo một video dọc với chuyển động camera mượt mà"
           },
           {
             "type": "image_url",
             "image_url": {
-              "url": "data:image/jpeg;base64/<参考图1base64>"
+              "url": "data:image/jpeg;base64/<base64_ảnh_tham_chiếu_1>"
             }
           },
           {
             "type": "image_url",
             "image_url": {
-              "url": "data:image/jpeg;base64/<参考图2base64>"
+              "url": "data:image/jpeg;base64/<base64_ảnh_tham_chiếu_2>"
             }
           },
           {
             "type": "image_url",
             "image_url": {
-              "url": "data:image/jpeg;base64/<参考图3base64>"
+              "url": "data:image/jpeg;base64/<base64_ảnh_tham_chiếu_3>"
             }
           }
         ]
@@ -456,28 +456,23 @@ curl -X POST "http://localhost:8000/v1/chat/completions" \
 
 ---
 
-## 📄 许可证
+## 📄 Giấy phép
 
-本项目采用 MIT 许可证。详见 [LICENSE](LICENSE) 文件。
-
----
-
-## 🙏 致谢
-
-- [PearNoDec](https://github.com/PearNoDec) 提供的YesCaptcha打码方案
-- [raomaiping](https://github.com/raomaiping) 提供的无头打码方案
-感谢所有贡献者和使用者的支持！
+Dự án này sử dụng giấy phép MIT. Xem chi tiết tại file [LICENSE](LICENSE).
 
 ---
 
-## 📞 联系方式
+## 🙏 Lời cảm ơn
 
-- 提交 Issue：[GitHub Issues](https://github.com/TheSmallHanCat/flow2api/issues)
+- [PearNoDec](https://github.com/PearNoDec) đã cung cấp giải pháp captcha YesCaptcha
+- [raomaiping](https://github.com/raomaiping) đã cung cấp giải pháp captcha headless
+Cảm ơn sự ủng hộ của tất cả contributor và người dùng!
 
 ---
 
-**⭐ 如果这个项目对你有帮助，请给个 Star！**
+## 📞 Liên hệ
 
-## Star History
+- Gửi Issue: [GitHub Issues](https://github.com/TheSmallHanCat/flow2api/issues)
 
-[![Star History Chart](https://api.star-history.com/svg?repos=TheSmallHanCat/flow2api&type=date&legend=top-left)](https://www.star-history.com/#TheSmallHanCat/flow2api&type=date&legend=top-left)
+---
+
