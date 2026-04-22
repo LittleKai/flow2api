@@ -10,12 +10,12 @@ class Token(BaseModel):
 
     id: Optional[int] = None
 
-    # 认证信息 (核心)
+    # Thông tin xác thực (chính)
     st: str  # Session Token (__Secure-next-auth.session-token)
-    at: Optional[str] = None  # Access Token (从ST转换而来)
-    at_expires: Optional[datetime] = None  # AT过期时间
+    at: Optional[str] = None  # Access Token (được chuyển từ ST)
+    at_expires: Optional[datetime] = None  # Thời điểm AT hết hạn
 
-    # 基础信息
+    # Thông tin cơ bản
     email: str
     name: Optional[str] = ""
     remark: Optional[str] = None
@@ -24,38 +24,38 @@ class Token(BaseModel):
     last_used_at: Optional[datetime] = None
     use_count: int = 0
 
-    # VideoFX特有字段
-    credits: int = 0  # 剩余credits
+    # Trường riêng của VideoFX
+    credits: int = 0  # Credits còn lại
     user_paygate_tier: Optional[str] = None  # PAYGATE_TIER_ONE
 
-    # 项目管理
-    current_project_id: Optional[str] = None  # 当前使用的项目UUID
-    current_project_name: Optional[str] = None  # 项目名称
+    # Quản lý project
+    current_project_id: Optional[str] = None  # UUID của project đang dùng
+    current_project_name: Optional[str] = None  # Tên project
 
-    # 功能开关
+    # Công tắc tính năng
     image_enabled: bool = True
     video_enabled: bool = True
 
-    # 并发限制
-    image_concurrency: int = -1  # -1表示无限制
-    video_concurrency: int = -1  # -1表示无限制
+    # Giới hạn concurrency
+    image_concurrency: int = -1  # -1 nghĩa là không giới hạn
+    video_concurrency: int = -1  # -1 nghĩa là không giới hạn
 
-    # 打码代理（token 级，可覆盖全局浏览器打码代理）
+    # Proxy giải Captcha (cấp Token, có thể ghi đè proxy Captcha trình duyệt toàn cục)
     captcha_proxy_url: Optional[str] = None
 
-    # 429禁用相关
-    ban_reason: Optional[str] = None  # 禁用原因: "429_rate_limit" 或 None
-    banned_at: Optional[datetime] = None  # 禁用时间
+    # Các trường liên quan tới vô hiệu do 429
+    ban_reason: Optional[str] = None  # Lý do vô hiệu: "429_rate_limit" hoặc None
+    banned_at: Optional[datetime] = None  # Thời điểm vô hiệu
 
 
 class Project(BaseModel):
     """Project model for VideoFX"""
 
     id: Optional[int] = None
-    project_id: str  # VideoFX项目UUID
-    token_id: int  # 关联的Token ID
-    project_name: str  # 项目名称
-    tool_name: str = "PINHOLE"  # 工具名称,固定为PINHOLE
+    project_id: str  # UUID project của VideoFX
+    token_id: int  # ID Token liên kết
+    project_name: str  # Tên project
+    tool_name: str = "PINHOLE"  # Tên tool, cố định là PINHOLE
     is_active: bool = True
     created_at: Optional[datetime] = None
 
@@ -70,12 +70,12 @@ class TokenStats(BaseModel):
     error_count: int = 0  # Historical total errors (never reset)
     last_success_at: Optional[datetime] = None
     last_error_at: Optional[datetime] = None
-    # 今日统计
+    # Thống kê hôm nay
     today_image_count: int = 0
     today_video_count: int = 0
     today_error_count: int = 0
     today_date: Optional[str] = None
-    # 连续错误计数 (用于自动禁用判断)
+    # Đếm lỗi liên tiếp (dùng cho logic tự vô hiệu hóa)
     consecutive_error_count: int = 0
 
 
@@ -83,7 +83,7 @@ class Task(BaseModel):
     """Generation task"""
 
     id: Optional[int] = None
-    task_id: str  # Flow API返回的operation name
+    task_id: str  # operation name Flow API trả về
     token_id: int
     model: str
     prompt: str
@@ -91,7 +91,7 @@ class Task(BaseModel):
     progress: int = 0  # 0-100
     result_urls: Optional[List[str]] = None
     error_message: Optional[str] = None
-    scene_id: Optional[str] = None  # Flow API的sceneId
+    scene_id: Optional[str] = None  # sceneId của Flow API
     created_at: Optional[datetime] = None
     completed_at: Optional[datetime] = None
 
@@ -126,10 +126,10 @@ class ProxyConfig(BaseModel):
     """Proxy configuration"""
 
     id: int = 1
-    enabled: bool = False  # 请求代理开关
-    proxy_url: Optional[str] = None  # 请求代理地址
-    media_proxy_enabled: bool = False  # 图片上传/下载代理开关
-    media_proxy_url: Optional[str] = None  # 图片上传/下载代理地址
+    enabled: bool = False  # Công tắc proxy cho request
+    proxy_url: Optional[str] = None  # Địa chỉ proxy request
+    media_proxy_enabled: bool = False  # Công tắc proxy tải lên/tải xuống ảnh
+    media_proxy_url: Optional[str] = None  # Địa chỉ proxy tải lên/tải xuống ảnh
 
 
 class GenerationConfig(BaseModel):
@@ -138,7 +138,7 @@ class GenerationConfig(BaseModel):
     id: int = 1
     image_timeout: int = 300  # seconds
     video_timeout: int = 1500  # seconds
-    max_retries: int = 3  # 请求最大重试次数
+    max_retries: int = 3  # Số lần retry tối đa cho request
 
 
 class CallLogicConfig(BaseModel):
@@ -191,12 +191,12 @@ class CaptchaConfig(BaseModel):
     remote_browser_timeout: int = 60
     website_key: str = "6LdsFiUsAAAAAIjVDZcuLhaHiDn5nnHVXVRQGeMV"
     page_action: str = "IMAGE_GENERATION"
-    browser_proxy_enabled: bool = False  # 浏览器打码是否启用代理
-    browser_proxy_url: Optional[str] = None  # 浏览器打码代理URL
-    browser_count: int = 1  # 浏览器打码实例数量
-    personal_project_pool_size: int = 4  # 单个 Token 默认维护的项目池数量（仅影响项目轮换）
-    personal_max_resident_tabs: int = 5  # 内置浏览器共享打码标签页数量上限
-    personal_idle_tab_ttl_seconds: int = 600  # 内置浏览器标签页空闲超时(秒)
+    browser_proxy_enabled: bool = False  # Trình duyệt giải Captcha có bật proxy không
+    browser_proxy_url: Optional[str] = None  # URL proxy trình duyệt giải Captcha
+    browser_count: int = 1  # Số instance trình duyệt giải Captcha
+    personal_project_pool_size: int = 4  # Số project pool mặc định của mỗi Token (chỉ ảnh hưởng luân chuyển project)
+    personal_max_resident_tabs: int = 5  # Số tab giải Captcha dùng chung tối đa của trình duyệt tích hợp
+    personal_idle_tab_ttl_seconds: int = 600  # Timeout nhàn rỗi của tab trình duyệt tích hợp (giây)
     created_at: Optional[datetime] = None
     updated_at: Optional[datetime] = None
 
@@ -205,8 +205,8 @@ class PluginConfig(BaseModel):
     """Plugin connection configuration"""
 
     id: int = 1
-    connection_token: str = ""  # 插件连接token
-    auto_enable_on_update: bool = True  # 更新token时自动启用（默认开启）
+    connection_token: str = ""  # Token kết nối của plugin
+    auto_enable_on_update: bool = True  # Tự bật lại khi cập nhật token (mặc định bật)
     created_at: Optional[datetime] = None
     updated_at: Optional[datetime] = None
 
@@ -225,7 +225,7 @@ class ImageConfig(BaseModel):
     aspectRatio: Optional[str] = None  # "16:9", "9:16", "1:1", "4:3", "3:4"
     imageSize: Optional[str] = None  # "2k", "4k"
 
-    # 兼容 OpenAI/NewAPI 等上游可能透传的 size/quality 或 snake_case 字段
+    # Tương thích các trường size/quality hoặc snake_case mà upstream OpenAI/NewAPI có thể truyền qua
     model_config = ConfigDict(extra="allow")
 
 

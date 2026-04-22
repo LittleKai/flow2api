@@ -1,12 +1,12 @@
 """
-基于 RT 的本地 reCAPTCHA 打码服务 (终极闭环版 - 无 fake_useragent 纯净版)
-支持：自动刷新 Session Token、外部触发指纹切换、死磕重试
+Dịch vụ giải reCAPTCHA cục bộ dựa trên RT (phiên bản closed-loop tối thượng, gọn - không có fake_useragent)
+Hỗ trợ: tự làm mới Session Token, trigger chuyển fingerprint từ bên ngoài, retry liên tục
 """
 import os
 import sys
 import subprocess
 import signal
-# 修复 Windows 上 playwright 的 asyncio 兼容性问题
+# Sửa lỗi tương thích asyncio của playwright trên Windows
 os.environ.setdefault("PLAYWRIGHT_BROWSERS_PATH", "0")
 
 import asyncio
@@ -22,13 +22,13 @@ from ..core.logger import debug_logger
 from ..core.config import config
 
 
-# ==================== Docker 环境检测 ====================
+# ==================== Nhận diện môi trường Docker ====================
 def _is_running_in_docker() -> bool:
-    """检测是否在 Docker 容器中运行"""
-    # 方法1: 检查 /.dockerenv 文件
+    """Kiểm tra có đang chạy trong Docker container không."""
+    # Cách 1: kiểm tra file /.dockerenv
     if os.path.exists('/.dockerenv'):
         return True
-    # 方法2: 检查 cgroup
+    # Cách 2: kiểm tra cgroup
     try:
         with open('/proc/1/cgroup', 'r') as f:
             content = f.read()
@@ -36,7 +36,7 @@ def _is_running_in_docker() -> bool:
                 return True
     except:
         pass
-    # 方法3: 检查环境变量
+    # Cách 3: kiểm tra biến môi trường
     if os.environ.get('DOCKER_CONTAINER') or os.environ.get('KUBERNETES_SERVICE_HOST'):
         return True
     return False
@@ -46,7 +46,7 @@ IS_DOCKER = _is_running_in_docker()
 
 
 def _is_truthy_env(name: str) -> bool:
-    """判断环境变量是否为 true。"""
+    """Kiểm tra biến môi trường có bằng true không."""
     value = os.environ.get(name, "")
     return value.strip().lower() in {"1", "true", "yes", "on"}
 
@@ -58,83 +58,83 @@ ALLOW_DOCKER_HEADED = (
 DOCKER_HEADED_BLOCKED = IS_DOCKER and not ALLOW_DOCKER_HEADED
 
 
-# ==================== playwright 自动安装 ====================
+# ==================== Tự động cài playwright ====================
 def _run_pip_install(package: str, use_mirror: bool = False) -> bool:
-    """运行 pip install 命令"""
+    """Chạy lệnh pip install."""
     cmd = [sys.executable, '-m', 'pip', 'install', package]
     if use_mirror:
         cmd.extend(['-i', 'https://pypi.tuna.tsinghua.edu.cn/simple'])
     
     try:
-        debug_logger.log_info(f"[BrowserCaptcha] 正在安装 {package}...")
-        print(f"[BrowserCaptcha] 正在安装 {package}...")
+        debug_logger.log_info(f"[BrowserCaptcha] Đang cài {package}...")
+        print(f"[BrowserCaptcha] Đang cài {package}...")
         result = subprocess.run(cmd, capture_output=True, text=True, timeout=300)
         if result.returncode == 0:
-            debug_logger.log_info(f"[BrowserCaptcha] ✅ {package} 安装成功")
-            print(f"[BrowserCaptcha] ✅ {package} 安装成功")
+            debug_logger.log_info(f"[BrowserCaptcha] ✅ Cài {package} thành công")
+            print(f"[BrowserCaptcha] ✅ Cài {package} thành công")
             return True
         else:
-            debug_logger.log_warning(f"[BrowserCaptcha] {package} 安装失败: {result.stderr[:200]}")
+            debug_logger.log_warning(f"[BrowserCaptcha] Cài {package} thất bại: {result.stderr[:200]}")
             return False
     except Exception as e:
-        debug_logger.log_warning(f"[BrowserCaptcha] {package} 安装异常: {e}")
+        debug_logger.log_warning(f"[BrowserCaptcha] Ngoại lệ khi cài {package}: {e}")
         return False
 
 
 def _run_playwright_install(use_mirror: bool = False) -> bool:
-    """安装 playwright chromium 浏览器"""
+    """Cài trình duyệt chromium cho playwright."""
     cmd = [sys.executable, '-m', 'playwright', 'install', 'chromium']
     env = os.environ.copy()
     
     if use_mirror:
-        # 使用国内镜像
+        # Dùng mirror trong nước
         env['PLAYWRIGHT_DOWNLOAD_HOST'] = 'https://npmmirror.com/mirrors/playwright'
     
     try:
-        debug_logger.log_info("[BrowserCaptcha] 正在安装 chromium 浏览器...")
-        print("[BrowserCaptcha] 正在安装 chromium 浏览器...")
+        debug_logger.log_info("[BrowserCaptcha] Đang cài trình duyệt chromium...")
+        print("[BrowserCaptcha] Đang cài trình duyệt chromium...")
         result = subprocess.run(cmd, capture_output=True, text=True, timeout=600, env=env)
         if result.returncode == 0:
-            debug_logger.log_info("[BrowserCaptcha] ✅ chromium 浏览器安装成功")
-            print("[BrowserCaptcha] ✅ chromium 浏览器安装成功")
+            debug_logger.log_info("[BrowserCaptcha] ✅ Cài trình duyệt chromium thành công")
+            print("[BrowserCaptcha] ✅ Cài trình duyệt chromium thành công")
             return True
         else:
-            debug_logger.log_warning(f"[BrowserCaptcha] chromium 安装失败: {result.stderr[:200]}")
+            debug_logger.log_warning(f"[BrowserCaptcha] Cài chromium thất bại: {result.stderr[:200]}")
             return False
     except Exception as e:
-        debug_logger.log_warning(f"[BrowserCaptcha] chromium 安装异常: {e}")
+        debug_logger.log_warning(f"[BrowserCaptcha] Ngoại lệ khi cài chromium: {e}")
         return False
 
 
 def _ensure_playwright_installed() -> bool:
-    """确保 playwright 已安装"""
+    """Đảm bảo playwright đã được cài."""
     try:
         import playwright
-        debug_logger.log_info("[BrowserCaptcha] playwright 已安装")
+        debug_logger.log_info("[BrowserCaptcha] playwright đã được cài")
         return True
     except ImportError:
         pass
     
-    debug_logger.log_info("[BrowserCaptcha] playwright 未安装，开始自动安装...")
-    print("[BrowserCaptcha] playwright 未安装，开始自动安装...")
+    debug_logger.log_info("[BrowserCaptcha] Chưa cài playwright, bắt đầu tự cài...")
+    print("[BrowserCaptcha] Chưa cài playwright, bắt đầu tự cài...")
     
-    # 先尝试官方源
+    # Thử nguồn chính thức trước
     if _run_pip_install('playwright', use_mirror=False):
         return True
     
-    # 官方源失败，尝试国内镜像
-    debug_logger.log_info("[BrowserCaptcha] 官方源安装失败，尝试国内镜像...")
-    print("[BrowserCaptcha] 官方源安装失败，尝试国内镜像...")
+    # Nguồn chính thất bại, thử mirror trong nước
+    debug_logger.log_info("[BrowserCaptcha] Cài từ nguồn chính thất bại, thử mirror trong nước...")
+    print("[BrowserCaptcha] Cài từ nguồn chính thất bại, thử mirror trong nước...")
     if _run_pip_install('playwright', use_mirror=True):
         return True
     
-    debug_logger.log_error("[BrowserCaptcha] ❌ playwright 自动安装失败，请手动安装: pip install playwright")
-    print("[BrowserCaptcha] ❌ playwright 自动安装失败，请手动安装: pip install playwright")
+    debug_logger.log_error("[BrowserCaptcha] ❌ Tự cài playwright thất bại, vui lòng cài thủ công: pip install playwright")
+    print("[BrowserCaptcha] ❌ Tự cài playwright thất bại, vui lòng cài thủ công: pip install playwright")
     return False
 
 
 def _ensure_browser_installed() -> bool:
-    """确保 chromium 浏览器已安装"""
+    """Đảm bảo trình duyệt chromium đã được cài."""
     try:
         detect_script = (
             "from playwright.sync_api import sync_playwright\n"
@@ -153,30 +153,30 @@ def _ensure_browser_installed() -> bool:
         browser_path = (result.stdout or "").strip().splitlines()
         browser_path = browser_path[-1].strip() if browser_path else ""
         if result.returncode == 0 and browser_path and os.path.exists(browser_path):
-            debug_logger.log_info(f"[BrowserCaptcha] chromium 浏览器已安装: {browser_path}")
+            debug_logger.log_info(f"[BrowserCaptcha] Trình duyệt chromium đã được cài: {browser_path}")
             return True
     except Exception as e:
-        debug_logger.log_info(f"[BrowserCaptcha] 检测浏览器时出错: {e}")
+        debug_logger.log_info(f"[BrowserCaptcha] Lỗi khi kiểm tra trình duyệt: {e}")
     
-    debug_logger.log_info("[BrowserCaptcha] chromium 浏览器未安装，开始自动安装...")
-    print("[BrowserCaptcha] chromium 浏览器未安装，开始自动安装...")
+    debug_logger.log_info("[BrowserCaptcha] Chưa cài trình duyệt chromium, bắt đầu tự cài...")
+    print("[BrowserCaptcha] Chưa cài trình duyệt chromium, bắt đầu tự cài...")
     
-    # 先尝试官方源
+    # Thử nguồn chính thức trước
     if _run_playwright_install(use_mirror=False):
         return True
     
-    # 官方源失败，尝试国内镜像
-    debug_logger.log_info("[BrowserCaptcha] 官方源安装失败，尝试国内镜像...")
-    print("[BrowserCaptcha] 官方源安装失败，尝试国内镜像...")
+    # Nguồn chính thất bại, thử mirror trong nước
+    debug_logger.log_info("[BrowserCaptcha] Cài từ nguồn chính thất bại, thử mirror trong nước...")
+    print("[BrowserCaptcha] Cài từ nguồn chính thất bại, thử mirror trong nước...")
     if _run_playwright_install(use_mirror=True):
         return True
     
-    debug_logger.log_error("[BrowserCaptcha] ❌ chromium 浏览器自动安装失败，请手动安装: python -m playwright install chromium")
-    print("[BrowserCaptcha] ❌ chromium 浏览器自动安装失败，请手动安装: python -m playwright install chromium")
+    debug_logger.log_error("[BrowserCaptcha] ❌ Tự cài chromium thất bại, vui lòng cài thủ công: python -m playwright install chromium")
+    print("[BrowserCaptcha] ❌ Tự cài chromium thất bại, vui lòng cài thủ công: python -m playwright install chromium")
     return False
 
 
-# 尝试导入 playwright
+# Thử import playwright
 async_playwright = None
 Route = None
 BrowserContext = None
@@ -184,36 +184,36 @@ PLAYWRIGHT_AVAILABLE = False
 
 if DOCKER_HEADED_BLOCKED:
     debug_logger.log_warning(
-        "[BrowserCaptcha] 检测到 Docker 环境，默认禁用有头浏览器打码。"
-        "如需启用请设置 ALLOW_DOCKER_HEADED_CAPTCHA=true，并提供 DISPLAY/Xvfb。"
+        "[BrowserCaptcha] Phát hiện môi trường Docker, mặc định vô hiệu Captcha trình duyệt có giao diện."
+        "Nếu cần bật hãy đặt ALLOW_DOCKER_HEADED_CAPTCHA=true và cung cấp DISPLAY/Xvfb."
     )
-    print("[BrowserCaptcha] ⚠️ 检测到 Docker 环境，默认禁用有头浏览器打码")
-    print("[BrowserCaptcha] 如需启用请设置 ALLOW_DOCKER_HEADED_CAPTCHA=true，并提供 DISPLAY/Xvfb")
+    print("[BrowserCaptcha] ⚠️ Phát hiện môi trường Docker, mặc định vô hiệu Captcha trình duyệt có giao diện")
+    print("[BrowserCaptcha] Nếu cần bật hãy đặt ALLOW_DOCKER_HEADED_CAPTCHA=true và cung cấp DISPLAY/Xvfb")
 else:
     if IS_DOCKER and ALLOW_DOCKER_HEADED:
         debug_logger.log_warning(
-            "[BrowserCaptcha] Docker 有头浏览器打码白名单已启用，请确保 DISPLAY/Xvfb 可用"
+            "[BrowserCaptcha] Đã bật whitelist Docker cho Captcha trình duyệt có giao diện, đảm bảo DISPLAY/Xvfb khả dụng"
         )
-        print("[BrowserCaptcha] ✅ Docker 有头浏览器打码白名单已启用")
+        print("[BrowserCaptcha] ✅ Đã bật whitelist Docker cho Captcha trình duyệt có giao diện")
     if _ensure_playwright_installed():
         try:
             from playwright.async_api import async_playwright, Route, BrowserContext
             PLAYWRIGHT_AVAILABLE = True
-            # 检查并安装浏览器
+            # Kiểm tra và cài trình duyệt
             _ensure_browser_installed()
         except ImportError as e:
-            debug_logger.log_error(f"[BrowserCaptcha] playwright 导入失败: {e}")
-            print(f"[BrowserCaptcha] ❌ playwright 导入失败: {e}")
+            debug_logger.log_error(f"[BrowserCaptcha] Import playwright thất bại: {e}")
+            print(f"[BrowserCaptcha] ❌ Import playwright thất bại: {e}")
 
 
-# 配置
+# Cấu hình
 LABS_URL = "https://labs.google/fx/tools/flow"
 
 # ==========================================
-# 代理解析工具函数
+# Hàm tiện ích parse proxy
 # ==========================================
 def parse_proxy_url(proxy_url: str) -> Optional[Dict[str, str]]:
-    """解析代理URL（支持 socks5h://，Playwright 中按 socks5 处理）"""
+    """Parse URL proxy (hỗ trợ socks5h://, xử lý như socks5 trong Playwright)."""
     if not proxy_url: return None
     if not re.match(r'^(http|https|socks5h?|socks5)://', proxy_url): proxy_url = f"http://{proxy_url}"
     match = re.match(r'^(socks5h?|socks5|http|https)://(?:([^:]+):([^@]+)@)?([^:]+):(\d+)$', proxy_url)
@@ -228,11 +228,11 @@ def parse_proxy_url(proxy_url: str) -> Optional[Dict[str, str]]:
     return None
 
 def normalize_browser_proxy_url(proxy_url: str) -> tuple[Optional[str], Optional[str]]:
-    """将浏览器代理标准化为 Playwright/Chromium 可接受的格式。
+    """Chuẩn hóa proxy trình duyệt về định dạng Playwright/Chromium chấp nhận được.
 
-    Chromium 不支持带账号密码的 socks5/socks5h 代理认证。
-    对于 `socks5(h)://user:pass@host:port`，自动降级为 `http://user:pass@host:port`，
-    方便兼容同时提供 HTTP/SOCKS5 双入口的代理服务商。
+    Chromium không hỗ trợ xác thực user:pass với proxy socks5/socks5h.
+    Với `socks5(h)://user:pass@host:port`, tự động downgrade về `http://user:pass@host:port`
+    để tương thích với các nhà cung cấp proxy cung cấp cả HTTP/SOCKS5.
 
     Returns:
         (normalized_proxy_url, warning_message)
@@ -251,9 +251,9 @@ def normalize_browser_proxy_url(proxy_url: str) -> tuple[Optional[str], Optional
     if protocol.startswith("socks5") and username and password:
         normalized = f"http://{username}:{password}@{host}:{port}"
         warning = (
-            f"检测到带认证的 {protocol.upper()} 代理。"
-            "Chromium 不支持 socks5 用户名密码认证，"
-            f"已自动改用 HTTP 代理启动浏览器: http://{host}:{port}"
+            f"Phát hiện proxy {protocol.upper()} có xác thực."
+            "Chromium không hỗ trợ xác thực user:pass cho socks5, "
+            f"đã tự chuyển sang HTTP proxy để khởi động trình duyệt: http://{host}:{port}"
         )
         return normalized, warning
 
@@ -266,13 +266,13 @@ def validate_browser_proxy_url(proxy_url: str) -> tuple[bool, str]:
     if not proxy_url: return True, None
     normalized_proxy_url, _ = normalize_browser_proxy_url(proxy_url.strip())
     parsed = parse_proxy_url(normalized_proxy_url)
-    if not parsed: return False, "代理格式错误"
+    if not parsed: return False, "Sai định dạng proxy"
     return True, None
 
 class TokenBrowser:
-    """简化版浏览器：每次获取 token 时启动新浏览器，用完即关
-    
-    每次都是新的随机 UA，避免长时间运行导致的各种问题
+    """Trình duyệt phiên bản đơn giản: mỗi lần lấy token khởi tạo trình duyệt mới, xong thì đóng.
+
+    Mỗi lần là UA ngẫu nhiên mới, tránh các vấn đề do chạy quá lâu.
     """
     # UA pool updated on 2026-03-01 from browsers that scored >= 0.3.
     UA_LIST = [
@@ -356,7 +356,7 @@ class TokenBrowser:
         "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/132.0.6834.210 Safari/537.36 OPR/117.0.0.0",
     ]
     
-    # 分辨率池
+    # Pool độ phân giải
     RESOLUTIONS = [
         (1920, 1080), (2560, 1440), (3840, 2160), (1366, 768), (1536, 864),
         (1600, 900), (1280, 720), (1360, 768), (1920, 1200),
@@ -609,7 +609,7 @@ class TokenBrowser:
         browser_executable_path = os.environ.get("BROWSER_EXECUTABLE_PATH", "").strip() or None
         proxy_option, raw_proxy_url, _ = await self._resolve_proxy_runtime_config(token_proxy_url=token_proxy_url)
 
-        # 先只记录代理，真实 UA/UA-CH 交给浏览器自己暴露，避免 user-agent 与 sec-ch-ua 版本错位。
+        # Chỉ ghi lại proxy; UA/UA-CH thực sự để trình duyệt tự phơi ra, tránh lệch phiên bản giữa user-agent và sec-ch-ua.
         self._last_fingerprint = {
             "proxy_url": raw_proxy_url if raw_proxy_url else None,
         }
@@ -766,7 +766,7 @@ class TokenBrowser:
             return playwright, browser, context
 
     async def _capture_page_fingerprint(self, page):
-        """从浏览器页面提取 UA 与客户端提示头，确保与打码浏览器一致。"""
+        """Trích xuất UA và client hint headers từ trang của trình duyệt, đảm bảo đồng nhất với trình duyệt giải Captcha."""
         try:
             fingerprint = await page.evaluate("""
                 () => {
@@ -810,10 +810,10 @@ class TokenBrowser:
                 if isinstance(value, str) and value:
                     self._last_fingerprint[key] = value
         except Exception as e:
-            debug_logger.log_warning(f"[BrowserCaptcha] Token-{self.token_id} 提取浏览器指纹失败: {type(e).__name__}: {str(e)[:200]}")
+            debug_logger.log_warning(f"[BrowserCaptcha] Token-{self.token_id} Trích xuất fingerprint trình duyệt thất bại: {type(e).__name__}: {str(e)[:200]}")
 
     async def _verify_score_in_page(self, page, token: str, verify_url: str) -> Dict[str, Any]:
-        """直接读取测试页面展示的分数，避免 verify.php 与页面显示口径不一致。"""
+        """Đọc trực tiếp score hiển thị trên trang test, tránh lệch giữa verify.php và hiển thị trang."""
         _ = token
         _ = verify_url
         started_at = time.time()
@@ -932,7 +932,7 @@ class TokenBrowser:
                 "current_ip_address": last_snapshot.get("current_ip_address") or "",
                 "page_title": last_snapshot.get("title") or "",
                 "page_url": last_snapshot.get("url") or "",
-                "error": last_snapshot.get("error") or "未在页面中读取到分数",
+                "error": last_snapshot.get("error") or "Không đọc được score trong trang",
             },
         }
     
@@ -991,24 +991,24 @@ class TokenBrowser:
         context,
         action: str
     ):
-        """等待上游请求结束后再关闭浏览器（超时兜底）。"""
-        close_reason = "上游请求完成"
+        """Chờ upstream request kết thúc rồi mới đóng trình duyệt (có timeout phòng hờ)."""
+        close_reason = "Upstream request đã xong"
         try:
             await asyncio.wait_for(release_event.wait(), timeout=wait_timeout)
         except asyncio.TimeoutError:
-            close_reason = f"等待上游请求完成超时({wait_timeout}s)"
+            close_reason = f"Timeout khi chờ upstream request xong ({wait_timeout}s)"
             debug_logger.log_warning(
-                f"[BrowserCaptcha] Token-{self.token_id} {close_reason}，执行兜底关闭"
+                f"[BrowserCaptcha] Token-{self.token_id} {close_reason}, thực thi đóng phòng hờ"
             )
         except Exception as e:
-            close_reason = f"等待上游请求完成异常: {type(e).__name__}"
+            close_reason = f"Ngoại lệ khi chờ upstream request xong: {type(e).__name__}"
             debug_logger.log_warning(
-                f"[BrowserCaptcha] Token-{self.token_id} {close_reason}，执行兜底关闭"
+                f"[BrowserCaptcha] Token-{self.token_id} {close_reason}, thực thi đóng phòng hờ"
             )
         finally:
             await self._close_browser(playwright, browser, context)
             debug_logger.log_info(
-                f"[BrowserCaptcha] Token-{self.token_id} {close_reason}，浏览器已关闭 (action={action}, request_ref={request_ref[:8]})"
+                f"[BrowserCaptcha] Token-{self.token_id} {close_reason}, trình duyệt đã đóng (action={action}, request_ref={request_ref[:8]})"
             )
             async with self._pending_release_lock:
                 self._pending_release_entries.pop(request_ref, None)
@@ -1020,15 +1020,15 @@ class TokenBrowser:
         context,
         action: str
     ) -> str:
-        """打码成功后延迟关闭浏览器，等待 Flow 请求结束通知。"""
+        """Sau khi giải Captcha xong, chờ thông báo Flow request kết thúc rồi mới đóng trình duyệt."""
         flow_timeout = int(getattr(config, "flow_timeout", 300) or 300)
         upsample_timeout = int(getattr(config, "upsample_timeout", 300) or 300)
         if action == "IMAGE_GENERATION":
-            # 图片链路可能包含放大请求，等待上限至少覆盖 flow/upsample 超时
+            # Luồng ảnh có thể bao gồm request phóng to, thời gian chờ phải phủ ít nhất timeout flow/upsample
             base_timeout = max(flow_timeout, upsample_timeout)
             wait_timeout = max(base_timeout + 180, 900)
         else:
-            # 视频请求默认超时更长，给更大的缓冲避免“请求未结束就关闭”
+            # Request video mặc định timeout dài hơn, cho buffer lớn để tránh "đóng khi request chưa xong"
             wait_timeout = max(flow_timeout + 300, 1800)
         request_ref = uuid.uuid4().hex
         release_event = asyncio.Event()
@@ -1050,13 +1050,13 @@ class TokenBrowser:
                 "task": release_task,
             }
         debug_logger.log_info(
-            f"[BrowserCaptcha] Token-{self.token_id} 打码成功后进入延迟关闭，等待上游请求完成 "
+            f"[BrowserCaptcha] Token-{self.token_id} Giải Captcha xong, vào trạng thái chờ đóng, đợi upstream request xong "
             f"(action={action}, timeout={wait_timeout}s, request_ref={request_ref[:8]})"
         )
         return request_ref
 
     async def notify_generation_request_finished(self, request_ref: Optional[str] = None):
-        """通知当前 Token 对应的上游图片/视频请求已结束。"""
+        """Thông báo upstream request ảnh/video của Token này đã kết thúc."""
         async with self._pending_release_lock:
             release_event = None
             matched_ref = request_ref
@@ -1064,14 +1064,14 @@ class TokenBrowser:
                 entry = self._pending_release_entries.pop(matched_ref)
                 release_event = entry.get("event")
             elif not matched_ref and self._pending_release_entries:
-                # 兼容旧调用方（无 request_ref），仅回收最早待释放项，避免一次性影响全部请求。
+                # Tương thích caller cũ (không có request_ref), chỉ thu hồi mục chờ-giải-phóng cũ nhất để tránh ảnh hưởng toàn bộ request.
                 matched_ref = next(iter(self._pending_release_entries.keys()))
                 entry = self._pending_release_entries.pop(matched_ref)
                 release_event = entry.get("event")
         if release_event and not release_event.is_set():
             release_event.set()
             debug_logger.log_info(
-                f"[BrowserCaptcha] Token-{self.token_id} 收到上游请求完成通知，开始关闭浏览器 "
+                f"[BrowserCaptcha] Token-{self.token_id} Nhận thông báo upstream request xong, bắt đầu đóng trình duyệt "
                 f"(request_ref={(matched_ref or 'unknown')[:8]})"
             )
 
@@ -1110,18 +1110,18 @@ class TokenBrowser:
             await self.recycle_browser(reason="force_close_all", rotate_profile=False)
 
     async def _execute_captcha(self, context, project_id: str, website_key: str, action: str) -> Optional[str]:
-        """在给定 context 中执行打码逻辑"""
+        """Thực thi logic giải Captcha trong context đã cho."""
         page = None
         try:
             page = await context.new_page()
             await page.add_init_script("Object.defineProperty(navigator, 'webdriver', {get: () => undefined});")
 
-            # 使用更简单的 API 地址，避免加载复杂页面
+            # Dùng địa chỉ API đơn giản hơn để tránh load trang phức tạp
             page_url = "https://labs.google/fx/api/auth/providers"
             primary_host = "https://www.recaptcha.net" if self._browser_proxy_active else "https://www.google.com"
             secondary_host = "https://www.google.com" if primary_host == "https://www.recaptcha.net" else "https://www.recaptcha.net"
             debug_logger.log_info(
-                f"[BrowserCaptcha] Token-{self.token_id} 加载 enterprise.js: primary={primary_host}, secondary={secondary_host}"
+                f"[BrowserCaptcha] Token-{self.token_id} Load enterprise.js: primary={primary_host}, secondary={secondary_host}"
             )
             
             async def handle_route(route):
@@ -1156,7 +1156,7 @@ class TokenBrowser:
                         return
                     failure = request.failure or ""
                     debug_logger.log_warning(
-                        f"[BrowserCaptcha] Token-{self.token_id} 资源加载失败: url={failed_url[:200]}, error={failure}"
+                        f"[BrowserCaptcha] Token-{self.token_id} Load tài nguyên thất bại: url={failed_url[:200]}, error={failure}"
                     )
                 except Exception:
                     pass
@@ -1164,18 +1164,18 @@ class TokenBrowser:
             await page.route("**/*", handle_route)
             page.on("requestfailed", handle_request_failed)
             try:
-                await page.goto(page_url, wait_until="load", timeout=15000)  # 减少到15秒
+                await page.goto(page_url, wait_until="load", timeout=15000)  # Giảm xuống 15 giây
             except Exception as e:
-                debug_logger.log_warning(f"[BrowserCaptcha] Token-{self.token_id} page.goto 失败: {type(e).__name__}: {str(e)[:200]}")
+                debug_logger.log_warning(f"[BrowserCaptcha] Token-{self.token_id} page.goto thất bại: {type(e).__name__}: {str(e)[:200]}")
                 return None
 
             try:
-                await page.wait_for_function("typeof grecaptcha !== 'undefined'", timeout=10000)  # 减少到10秒
+                await page.wait_for_function("typeof grecaptcha !== 'undefined'", timeout=10000)  # Giảm xuống 10 giây
             except Exception as e:
-                debug_logger.log_warning(f"[BrowserCaptcha] Token-{self.token_id} grecaptcha 未就绪: {type(e).__name__}: {str(e)[:200]}")
+                debug_logger.log_warning(f"[BrowserCaptcha] Token-{self.token_id} grecaptcha chưa sẵn sàng: {type(e).__name__}: {str(e)[:200]}")
                 return None
 
-            # 记录本次打码页面的真实 UA/客户端提示头
+            # Ghi lại UA/client hint thực tế của trang giải Captcha lần này
             await self._capture_page_fingerprint(page)
 
             token = await asyncio.wait_for(
@@ -1192,18 +1192,18 @@ class TokenBrowser:
                 timeout=30
             )
 
-            # 额外等待几秒，确保 enterprise 请求链路完全稳定
+            # Chờ thêm vài giây để đảm bảo luồng request enterprise ổn định
             post_wait_seconds = float(getattr(config, "browser_recaptcha_settle_seconds", 3) or 3)
             if post_wait_seconds > 0:
                 debug_logger.log_info(
-                    f"[BrowserCaptcha] Token-{self.token_id} token已获取，额外等待 {post_wait_seconds:.1f}s 后返回"
+                    f"[BrowserCaptcha] Token-{self.token_id} Đã lấy token, chờ thêm {post_wait_seconds:.1f}s rồi trả về"
                 )
                 await asyncio.sleep(post_wait_seconds)
 
             return token
         except Exception as e:
             msg = f"{type(e).__name__}: {str(e)}"
-            debug_logger.log_warning(f"[BrowserCaptcha] Token-{self.token_id} 打码失败: {msg[:200]}")
+            debug_logger.log_warning(f"[BrowserCaptcha] Token-{self.token_id} Giải Captcha thất bại: {msg[:200]}")
             return None
         finally:
             if page:
@@ -1221,7 +1221,7 @@ class TokenBrowser:
         verify_url: Optional[str] = None,
         enterprise: bool = False,
     ) -> Any:
-        """在任意站点执行 reCAPTCHA，用于分数测试等非 Flow 场景。"""
+        """Chạy reCAPTCHA trên site bất kỳ, dùng cho kiểm tra score và các tình huống không phải Flow."""
         page = None
         try:
             page = await context.new_page()
@@ -1241,7 +1241,7 @@ class TokenBrowser:
             api_label = "enterprise.js" if enterprise else "api.js"
 
             debug_logger.log_info(
-                f"[BrowserCaptcha] Token-{self.token_id} 加载真实自定义页面 {api_label}: primary={primary_host}, secondary={secondary_host}, url={website_url}"
+                f"[BrowserCaptcha] Token-{self.token_id} Load trang tùy chỉnh thực tế {api_label}: primary={primary_host}, secondary={secondary_host}, url={website_url}"
             )
 
             def handle_request_failed(request):
@@ -1251,7 +1251,7 @@ class TokenBrowser:
                         return
                     failure = request.failure or ""
                     debug_logger.log_warning(
-                        f"[BrowserCaptcha] Token-{self.token_id} 自定义资源加载失败: url={failed_url[:200]}, error={failure}"
+                        f"[BrowserCaptcha] Token-{self.token_id} Load tài nguyên tùy chỉnh thất bại: url={failed_url[:200]}, error={failure}"
                     )
                 except Exception:
                     pass
@@ -1262,7 +1262,7 @@ class TokenBrowser:
                 await page.goto(website_url, wait_until="domcontentloaded", timeout=30000)
             except Exception as e:
                 debug_logger.log_warning(
-                    f"[BrowserCaptcha] Token-{self.token_id} 自定义 page.goto 失败: {type(e).__name__}: {str(e)[:200]}"
+                    f"[BrowserCaptcha] Token-{self.token_id} page.goto tùy chỉnh thất bại: {type(e).__name__}: {str(e)[:200]}"
                 )
                 return None
 
@@ -1277,9 +1277,9 @@ class TokenBrowser:
                     pass
                 await asyncio.sleep(0.5)
             if not page_loaded:
-                debug_logger.log_warning(f"[BrowserCaptcha] Token-{self.token_id} 自定义页面 readyState 未达到 complete，继续尝试预热")
+                debug_logger.log_warning(f"[BrowserCaptcha] Token-{self.token_id} readyState trang tùy chỉnh chưa đạt complete, tiếp tục warm-up")
 
-            # 模拟更自然的前台交互，避免冷启动空白上下文直接 execute。
+            # Mô phỏng tương tác foreground tự nhiên hơn, tránh cold-start context trống rồi execute luôn.
             try:
                 await page.mouse.move(320, 220)
                 await page.mouse.move(520, 320, steps=12)
@@ -1305,7 +1305,7 @@ class TokenBrowser:
             warmup_seconds = float(getattr(config, "browser_score_test_warmup_seconds", 12) or 12)
             if warmup_seconds > 0:
                 debug_logger.log_info(
-                    f"[BrowserCaptcha] Token-{self.token_id} 真实页面预热 {warmup_seconds:.1f}s 后再执行自定义打码"
+                    f"[BrowserCaptcha] Token-{self.token_id} Warm-up trang thực {warmup_seconds:.1f}s rồi mới chạy giải Captcha tùy chỉnh"
                 )
                 await asyncio.sleep(warmup_seconds)
 
@@ -1313,7 +1313,7 @@ class TokenBrowser:
                 await page.wait_for_function(wait_expression, timeout=15000)
             except Exception as e:
                 debug_logger.log_warning(
-                    f"[BrowserCaptcha] Token-{self.token_id} 自定义 grecaptcha 未就绪，尝试补注入脚本: {type(e).__name__}: {str(e)[:200]}"
+                    f"[BrowserCaptcha] Token-{self.token_id} grecaptcha tùy chỉnh chưa sẵn sàng, thử inject script bù: {type(e).__name__}: {str(e)[:200]}"
                 )
                 try:
                     await page.evaluate(f"""
@@ -1338,7 +1338,7 @@ class TokenBrowser:
                     await page.wait_for_function(wait_expression, timeout=15000)
                 except Exception as inject_error:
                     debug_logger.log_warning(
-                        f"[BrowserCaptcha] Token-{self.token_id} 自定义 grecaptcha 最终未就绪: {type(inject_error).__name__}: {str(inject_error)[:200]}"
+                        f"[BrowserCaptcha] Token-{self.token_id} grecaptcha tùy chỉnh rốt cuộc không sẵn sàng: {type(inject_error).__name__}: {str(inject_error)[:200]}"
                     )
                     return None
 
@@ -1377,7 +1377,7 @@ class TokenBrowser:
             post_wait_seconds = float(getattr(config, "browser_recaptcha_settle_seconds", 3) or 3)
             if post_wait_seconds > 0:
                 debug_logger.log_info(
-                    f"[BrowserCaptcha] Token-{self.token_id} 自定义打码已完成，额外等待 {post_wait_seconds:.1f}s 后返回 token"
+                    f"[BrowserCaptcha] Token-{self.token_id} Giải Captcha tùy chỉnh đã xong, chờ thêm {post_wait_seconds:.1f}s rồi trả token"
                 )
                 await asyncio.sleep(post_wait_seconds)
 
@@ -1391,7 +1391,7 @@ class TokenBrowser:
             return token
         except Exception as e:
             msg = f"{type(e).__name__}: {str(e)}"
-            debug_logger.log_warning(f"[BrowserCaptcha] Token-{self.token_id} 自定义打码失败: {msg[:200]}")
+            debug_logger.log_warning(f"[BrowserCaptcha] Token-{self.token_id} Giải Captcha tùy chỉnh thất bại: {msg[:200]}")
             return None
         finally:
             if page:
@@ -1416,7 +1416,7 @@ class TokenBrowser:
         return bool(self._shared_browser or self._shared_context or self._shared_keepalive_page)
 
     def get_last_fingerprint(self) -> Optional[Dict[str, Any]]:
-        """返回最近一次打码浏览器的指纹快照。"""
+        """Trả về snapshot fingerprint trình duyệt lần giải Captcha gần nhất."""
         if not self._last_fingerprint:
             return None
         return dict(self._last_fingerprint)
@@ -1614,9 +1614,9 @@ class TokenBrowser:
 
 
 class BrowserCaptchaService:
-    """多浏览器轮询打码服务（单例模式）
-    
-    支持配置浏览器数量，每个浏览器只开 1 个标签页，请求轮询分配
+    """Dịch vụ giải Captcha đa trình duyệt (singleton).
+
+    Hỗ trợ cấu hình số lượng trình duyệt, mỗi trình duyệt chỉ mở 1 tab, request được phân phối luân phiên.
     """
     
     _instance: Optional['BrowserCaptchaService'] = None
@@ -1680,42 +1680,42 @@ class BrowserCaptchaService:
             async with cls._lock:
                 if cls._instance is None:
                     cls._instance = cls(db)
-                    # 从数据库加载 browser_count 配置
+                    # Load cấu hình browser_count từ database
                     await cls._instance._load_browser_count()
                     await cls._instance._ensure_idle_reaper()
         return cls._instance
     
     def _check_available(self):
-        """检查服务是否可用"""
+        """Kiểm tra dịch vụ có khả dụng không."""
         if DOCKER_HEADED_BLOCKED:
             raise RuntimeError(
-                "检测到 Docker 环境，默认禁用有头浏览器打码。"
-                "如需启用请设置环境变量 ALLOW_DOCKER_HEADED_CAPTCHA=true，并提供 DISPLAY/Xvfb。"
+                "Phát hiện môi trường Docker, mặc định vô hiệu Captcha trình duyệt có giao diện."
+                "Nếu cần bật hãy đặt biến môi trường ALLOW_DOCKER_HEADED_CAPTCHA=true và cung cấp DISPLAY/Xvfb."
             )
         if IS_DOCKER and not os.environ.get("DISPLAY"):
             raise RuntimeError(
-                "Docker 有头浏览器打码已启用，但 DISPLAY 未设置。"
-                "请设置 DISPLAY（例如 :99）并启动 Xvfb。"
+                "Đã bật Captcha trình duyệt có giao diện trong Docker nhưng chưa đặt DISPLAY."
+                "Vui lòng đặt DISPLAY (ví dụ :99) và khởi động Xvfb."
             )
         if not PLAYWRIGHT_AVAILABLE or async_playwright is None:
             raise RuntimeError(
-                "playwright 未安装或不可用。"
-                "请手动安装: pip install playwright && python -m playwright install chromium"
+                "playwright chưa được cài hoặc không khả dụng."
+                "Vui lòng cài thủ công: pip install playwright && python -m playwright install chromium"
             )
     
     async def _load_browser_count(self):
-        """从数据库加载浏览器数量配置"""
+        """Load cấu hình số lượng trình duyệt từ database."""
         if self.db:
             try:
                 captcha_config = await self.db.get_captcha_config()
                 self._browser_count = max(1, captcha_config.browser_count)
-                debug_logger.log_info(f"[BrowserCaptcha] 浏览器数量配置: {self._browser_count}")
+                debug_logger.log_info(f"[BrowserCaptcha] Cấu hình số lượng trình duyệt: {self._browser_count}")
             except Exception as e:
-                debug_logger.log_warning(f"[BrowserCaptcha] 加载 browser_count 配置失败: {e}，使用默认值 1")
+                debug_logger.log_warning(f"[BrowserCaptcha] Load cấu hình browser_count thất bại: {e}, dùng mặc định 1")
                 self._browser_count = 1
-        # 并发限制 = 浏览器数量，不再硬编码限制
+        # Giới hạn concurrency = số lượng trình duyệt, không còn hard-code giới hạn nữa
         self._token_semaphore = asyncio.Semaphore(self._browser_count)
-        debug_logger.log_info(f"[BrowserCaptcha] 并发上限: {self._browser_count}")
+        debug_logger.log_info(f"[BrowserCaptcha] Giới hạn concurrency: {self._browser_count}")
     
     async def reload_browser_count(self):
         """???????????????????????"""
@@ -1802,8 +1802,8 @@ class BrowserCaptchaService:
                 self._slot_reservations[slot_id] = current - 1
 
     async def _select_browser_id(self, project_id: Optional[str]) -> int:
-        # browser 模式不再按 project_id 粘住某个 slot。
-        # 优先复用空闲且已预热的共享浏览器，其次空闲冷槽位；全部繁忙时再轮询等待。
+        # Chế độ browser không còn stick theo project_id cho một slot cụ thể nữa.
+        # Ưu tiên tái dùng trình duyệt chia sẻ đang rảnh và đã warm-up, sau đó là slot rảnh nhưng cold; khi tất cả bận thì chờ luân phiên.
         async with self._slot_allocation_lock:
             async with self._browsers_lock:
                 warmed_idle_slot: Optional[int] = None
@@ -1831,31 +1831,31 @@ class BrowserCaptchaService:
             return slot_id
 
     async def _get_or_create_browser(self, browser_id: int) -> TokenBrowser:
-        """获取或创建指定 ID 的浏览器实例"""
+        """Lấy hoặc tạo instance trình duyệt theo ID chỉ định."""
         async with self._browsers_lock:
             if browser_id not in self._browsers:
                 user_data_dir = os.path.join(self.base_user_data_dir, f"browser_{browser_id}")
                 browser = TokenBrowser(browser_id, user_data_dir, db=self.db)
                 self._browsers[browser_id] = browser
-                debug_logger.log_info(f"[BrowserCaptcha] 创建浏览器实例 {browser_id}")
+                debug_logger.log_info(f"[BrowserCaptcha] Tạo instance trình duyệt {browser_id}")
             return self._browsers[browser_id]
     
     def _get_next_browser_id(self) -> int:
-        """轮询获取下一个浏览器 ID"""
+        """Lấy ID trình duyệt kế tiếp theo luân phiên."""
         browser_id = self._round_robin_index % self._browser_count
         self._round_robin_index += 1
         return browser_id
 
     @staticmethod
     def _compose_browser_ref(browser_id: int, request_ref: Optional[str]) -> Union[int, str]:
-        """将 browser_id 与 request_ref 合并为可回传的请求句柄。"""
+        """Gộp browser_id và request_ref thành handle request có thể truyền ngược lại."""
         if request_ref:
             return f"{browser_id}:{request_ref}"
         return browser_id
 
     @staticmethod
     def _parse_browser_ref(browser_ref: Optional[Union[int, str]]) -> tuple[Optional[int], Optional[str]]:
-        """解析请求句柄，兼容旧的纯 int browser_id。"""
+        """Parse handle request, tương thích browser_id kiểu int cũ."""
         if browser_ref is None:
             return None, None
 
@@ -1873,7 +1873,7 @@ class BrowserCaptchaService:
         return None, None
 
     async def _resolve_token_proxy_url(self, token_id: Optional[int]) -> Optional[str]:
-        """读取 token 级打码代理，为空时回退全局配置。"""
+        """Đọc proxy giải Captcha cấp token; nếu rỗng thì fallback về cấu hình toàn cục."""
         if not token_id or not self.db:
             return None
         try:
@@ -1881,21 +1881,21 @@ class BrowserCaptchaService:
             if token and token.captcha_proxy_url and token.captcha_proxy_url.strip():
                 return token.captcha_proxy_url.strip()
         except Exception as e:
-            debug_logger.log_warning(f"[BrowserCaptcha] 读取 token({token_id}) 打码代理失败: {e}")
+            debug_logger.log_warning(f"[BrowserCaptcha] Đọc proxy giải Captcha của token({token_id}) thất bại: {e}")
         return None
     
     async def get_token(self, project_id: str, action: str = "IMAGE_GENERATION", token_id: int = None) -> tuple[Optional[str], Union[int, str]]:
-        """获取 reCAPTCHA Token（从共享浏览器池选择 slot）
-        
+        """Lấy reCAPTCHA Token (chọn slot từ pool trình duyệt chia sẻ).
+
         Args:
-            project_id: 项目 ID
+            project_id: ID project
             action: reCAPTCHA action
-            token_id: 业务 token id（仅用于读取 token 级打码代理）
+            token_id: ID token nghiệp vụ (chỉ dùng để đọc proxy giải Captcha cấp token)
         
         Returns:
-            (token, browser_ref) 元组，browser_ref 包含 browser_id 与请求级 request_ref
+            Tuple (token, browser_ref); browser_ref chứa browser_id và request_ref cấp request
         """
-        # 检查服务是否可用
+        # Kiểm tra dịch vụ có khả dụng không
         self._check_available()
         
         self._stats["req_total"] += 1
@@ -1904,7 +1904,7 @@ class BrowserCaptchaService:
         token: Optional[str] = None
         request_ref: Optional[str] = None
 
-        # 全局并发限制（如果已配置）
+        # Giới hạn concurrency toàn cục (nếu có cấu hình)
         if self._token_semaphore:
             async with self._token_semaphore:
                 browser_id = await self._select_browser_id(project_id)
@@ -1954,7 +1954,7 @@ class BrowserCaptchaService:
         action: str = "homepage",
         enterprise: bool = False,
     ) -> tuple[Optional[str], int]:
-        """获取任意站点的 reCAPTCHA token，用于分数测试。"""
+        """Lấy reCAPTCHA token trên site bất kỳ, dùng cho kiểm tra score."""
         self._check_available()
 
         if self._token_semaphore:
@@ -1987,7 +1987,7 @@ class BrowserCaptchaService:
         action: str = "homepage",
         enterprise: bool = False,
     ) -> tuple[Dict[str, Any], int]:
-        """在浏览器页面内完成 token 获取与分数校验。"""
+        """Hoàn tất lấy token và xác thực score trong trang trình duyệt."""
         self._check_available()
 
         if self._token_semaphore:
@@ -2015,7 +2015,7 @@ class BrowserCaptchaService:
         return payload, browser_id
 
     async def get_fingerprint(self, browser_ref: Optional[Union[int, str]]) -> Optional[Dict[str, Any]]:
-        """获取指定浏览器最近一次打码时的指纹快照。"""
+        """Lấy snapshot fingerprint lần giải Captcha gần nhất của trình duyệt chỉ định."""
         browser_id, _ = self._parse_browser_ref(browser_ref)
         if browser_id is None:
             return None
@@ -2036,7 +2036,7 @@ class BrowserCaptchaService:
             has_recaptcha = "recaptcha" in error_lower
             should_recycle = has_recaptcha and (
                 "evaluation failed" in error_lower
-                or "verification failed" in error_lower or "验证失败" in (error_reason or "")
+                or "verification failed" in error_lower or "xác thực thất bại" in (error_reason or "").lower()
                 or "failed" in error_lower
             )
             if should_recycle:
@@ -2056,7 +2056,7 @@ class BrowserCaptchaService:
                 debug_logger.log_warning(f"[BrowserCaptcha] browser {browser_id} recycle failed: {e}")
 
     async def report_request_finished(self, browser_ref: Optional[Union[int, str]] = None):
-        """上层通知本次请求已完成；browser 模式仅保留常驻浏览器，不在成功后主动关闭。"""
+        """Tầng trên thông báo request đã xong; chế độ browser chỉ giữ trình duyệt thường trú, không chủ động đóng sau khi thành công."""
         browser_id, _ = self._parse_browser_ref(browser_ref)
         if browser_id is None:
             return

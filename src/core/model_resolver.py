@@ -16,7 +16,7 @@ from typing import Optional, Dict, Any, Tuple
 from ..core.logger import debug_logger
 
 # ──────────────────────────────────────────────
-# 简化模型名 → 基础模型名前缀 的映射
+# Ánh xạ tên mô hình rút gọn → tiền tố tên mô hình cơ sở
 # ──────────────────────────────────────────────
 IMAGE_BASE_MODELS = {
     # Gemini 2.5 Flash (GEM_PIX)
@@ -30,17 +30,17 @@ IMAGE_BASE_MODELS = {
 }
 
 # ──────────────────────────────────────────────
-# aspectRatio 转换映射
-# 支持 Gemini 原生格式 ("16:9") 和内部格式 ("landscape")
+# Ánh xạ chuyển đổi aspectRatio
+# Hỗ trợ cả định dạng gốc Gemini ("16:9") và định dạng nội bộ ("landscape")
 # ──────────────────────────────────────────────
 ASPECT_RATIO_MAP = {
-    # Gemini 标准 ratio 格式
+    # Định dạng ratio chuẩn của Gemini
     "16:9": "landscape",
     "9:16": "portrait",
     "1:1": "square",
     "4:3": "four-three",
     "3:4": "three-four",
-    # 英文名直接映射
+    # Tên tiếng Anh ánh xạ thẳng
     "landscape": "landscape",
     "portrait": "portrait",
     "square": "square",
@@ -48,14 +48,14 @@ ASPECT_RATIO_MAP = {
     "three-four": "three-four",
     "four_three": "four-three",
     "three_four": "three-four",
-    # 大写形式
+    # Dạng chữ hoa
     "LANDSCAPE": "landscape",
     "PORTRAIT": "portrait",
     "SQUARE": "square",
 }
 
-# 每个基础模型支持的 aspectRatio 列表
-# 如果请求的 ratio 不在支持列表中，降级到默认值
+# Danh sách aspectRatio hỗ trợ cho mỗi mô hình cơ sở
+# Nếu ratio yêu cầu không nằm trong danh sách hỗ trợ, downgrade về giá trị mặc định
 MODEL_SUPPORTED_ASPECTS = {
     "gemini-2.5-flash-image": ["landscape", "portrait"],
     "gemini-3.0-pro-image": [
@@ -75,15 +75,15 @@ MODEL_SUPPORTED_ASPECTS = {
     "imagen-4.0-generate-preview": ["landscape", "portrait"],
 }
 
-# 每个基础模型支持的 imageSize（分辨率）列表
+# Danh sách imageSize (độ phân giải) hỗ trợ cho mỗi mô hình cơ sở
 MODEL_SUPPORTED_SIZES = {
-    "gemini-2.5-flash-image": [],  # 不支持放大
+    "gemini-2.5-flash-image": [],  # Không hỗ trợ phóng to
     "gemini-3.0-pro-image": ["2k", "4k"],
     "gemini-3.1-flash-image": ["2k", "4k"],
-    "imagen-4.0-generate-preview": [],  # 不支持放大
+    "imagen-4.0-generate-preview": [],  # Không hỗ trợ phóng to
 }
 
-# imageSize 归一化映射
+# Ánh xạ chuẩn hóa imageSize
 IMAGE_SIZE_MAP = {
     "1k": "1k",
     "1K": "1k",
@@ -94,14 +94,14 @@ IMAGE_SIZE_MAP = {
     "": "",
 }
 
-# 默认 aspectRatio
+# aspectRatio mặc định
 DEFAULT_ASPECT = "landscape"
 
 OPENAI_IMAGE_SIZE_RE = re.compile(r"^(?P<w>\d{2,5})\s*[xX]\s*(?P<h>\d{2,5})$")
 
-# OpenAI 常见 quality → imageSize 映射
-# - 这里的 imageSize 是 flow2api 的“放大档位”，并不等价于 OpenAI 的像素尺寸；
-#   但可用作“画质/清晰度”的近似映射。
+# Ánh xạ quality thông dụng của OpenAI → imageSize
+# - imageSize ở đây là "mức phóng to" của flow2api, không tương đương kích thước pixel của OpenAI;
+#   nhưng có thể dùng làm ánh xạ gần đúng cho "chất lượng/độ nét".
 OPENAI_QUALITY_MAP = {
     "low": None,
     "standard": None,
@@ -111,7 +111,7 @@ OPENAI_QUALITY_MAP = {
     "ultra": "4k",
 }
 
-# 用于把 OpenAI size（如 1024x1792）映射到最接近的 flow2api aspect 选项
+# Dùng để ánh xạ OpenAI size (ví dụ 1024x1792) sang option aspect gần nhất của flow2api
 ASPECT_RATIO_FLOAT_MAP = {
     "landscape": 16 / 9,
     "portrait": 9 / 16,
@@ -122,7 +122,7 @@ ASPECT_RATIO_FLOAT_MAP = {
 
 
 # ──────────────────────────────────────────────
-# 视频模型简化名映射
+# Ánh xạ tên rút gọn của mô hình video
 # ──────────────────────────────────────────────
 VIDEO_BASE_MODELS = {
     # T2V models
@@ -188,15 +188,15 @@ VIDEO_BASE_MODELS = {
 
 
 def _extract_generation_params(request) -> Tuple[Optional[str], Optional[str]]:
-    """从请求中提取 aspectRatio 和 imageSize 参数。
+    """Trích xuất tham số aspectRatio và imageSize từ request.
 
-    优先级：
-    1. request.generationConfig.imageConfig (顶层 Gemini 参数)
-    2. extra fields 中的 generationConfig (extra_body 透传)
-    3. OpenAI 风格字段（size/quality）兼容：可在 generationConfig/imageConfig 或顶层 extra 中出现
+    Ưu tiên:
+    1. request.generationConfig.imageConfig (tham số Gemini cấp cao)
+    2. generationConfig trong extra fields (truyền qua extra_body)
+    3. Tương thích kiểu OpenAI (size/quality): có thể xuất hiện trong generationConfig/imageConfig hoặc extra cấp cao
 
     Returns:
-        (aspect_ratio, image_size) 归一化后的值
+        (aspect_ratio, image_size) đã chuẩn hóa
     """
     def _normalize_str(value: Any) -> Optional[str]:
         if not isinstance(value, str):
@@ -307,7 +307,7 @@ def _extract_generation_params(request) -> Tuple[Optional[str], Optional[str]]:
         return None
 
     def _apply_image_config(image_config: Any, aspect_ratio: Optional[str], image_size: Optional[str]) -> Tuple[Optional[str], Optional[str]]:
-        # 显式 aspectRatio/imageSize
+        # aspectRatio/imageSize tường minh
         if not aspect_ratio:
             aspect_ratio = _normalize_aspect_ratio(
                 _read_value(image_config, "aspectRatio", "aspect_ratio", "aspect")
@@ -330,7 +330,7 @@ def _extract_generation_params(request) -> Tuple[Optional[str], Optional[str]]:
     aspect_ratio: Optional[str] = None
     image_size: Optional[str] = None
 
-    # 1) 优先从 request.generationConfig 解析
+    # 1) Ưu tiên parse từ request.generationConfig
     gen_config = getattr(request, "generationConfig", None)
     if gen_config is not None:
         image_config = _read_value(gen_config, "imageConfig", "image_config")
@@ -339,7 +339,7 @@ def _extract_generation_params(request) -> Tuple[Optional[str], Optional[str]]:
                 image_config, aspect_ratio, image_size
             )
 
-        # 有些上游会把字段放在 generationConfig 顶层
+        # Một số upstream đặt field ở cấp cao của generationConfig
         if not aspect_ratio:
             aspect_ratio = _normalize_aspect_ratio(
                 _read_value(gen_config, "aspectRatio", "aspect_ratio")
@@ -354,7 +354,7 @@ def _extract_generation_params(request) -> Tuple[Optional[str], Optional[str]]:
         if not image_size:
             image_size = _image_size_from_openai_quality(_read_value(gen_config, "quality"))
 
-    # 2) 顶层没有时，再尝试从 extra fields (Pydantic extra="allow") 中透传的 generationConfig
+    # 2) Nếu cấp cao không có, thử generationConfig từ extra fields (Pydantic extra="allow")
     if (aspect_ratio is None or image_size is None) and hasattr(request, "__pydantic_extra__"):
         extra = request.__pydantic_extra__ or {}
         gen_config_raw = extra.get("generationConfig")
@@ -388,7 +388,7 @@ def _extract_generation_params(request) -> Tuple[Optional[str], Optional[str]]:
             if image_size is None:
                 image_size = _image_size_from_openai_quality(gen_config_raw.get("quality"))
 
-    # 3) OpenAI 风格 size/quality（顶层 extra）兼容
+    # 3) Tương thích size/quality kiểu OpenAI (extra cấp cao)
     if (aspect_ratio is None or image_size is None) and hasattr(request, "__pydantic_extra__"):
         extra = request.__pydantic_extra__ or {}
         if aspect_ratio is None:
@@ -396,7 +396,7 @@ def _extract_generation_params(request) -> Tuple[Optional[str], Optional[str]]:
         if image_size is None:
             image_size = _image_size_from_openai_quality(extra.get("quality"))
 
-        # 一些上游可能直接传 aspect_ratio/image_size
+        # Một số upstream có thể truyền thẳng aspect_ratio/image_size
         if aspect_ratio is None:
             aspect_ratio = _normalize_aspect_ratio(extra.get("aspect_ratio") or extra.get("aspectRatio"))
         if image_size is None:
@@ -408,74 +408,74 @@ def _extract_generation_params(request) -> Tuple[Optional[str], Optional[str]]:
 def resolve_model_name(
     model: str, request=None, model_config: Dict[str, Any] = None
 ) -> str:
-    """将简化模型名 + generationConfig 参数解析为内部 MODEL_CONFIG key。
+    """Phân giải tên mô hình rút gọn + tham số generationConfig thành key MODEL_CONFIG nội bộ.
 
-    如果 model 已经是有效的 MODEL_CONFIG key，直接返回。
-    如果 model 是简化名（基础模型名），则根据 generationConfig 中的
-    aspectRatio / imageSize 拼接出完整的内部模型名。
+    Nếu model đã là key MODEL_CONFIG hợp lệ, trả về luôn.
+    Nếu model là tên rút gọn (tên mô hình cơ sở), dựa vào aspectRatio / imageSize
+    trong generationConfig để ghép tên mô hình nội bộ đầy đủ.
 
     Args:
-        model: 请求中的模型名
-        request: ChatCompletionRequest 实例（用于提取 generationConfig）
-        model_config: MODEL_CONFIG 字典（用于验证解析后的模型名）
+        model: tên mô hình trong request
+        request: instance ChatCompletionRequest (để trích xuất generationConfig)
+        model_config: dict MODEL_CONFIG (để xác thực tên mô hình sau khi phân giải)
 
     Returns:
-        解析后的内部模型名
+        tên mô hình nội bộ sau khi phân giải
     """
-    # ────── 图片模型解析 ──────
+    # ────── Phân giải mô hình ảnh ──────
     if model in IMAGE_BASE_MODELS:
         base = IMAGE_BASE_MODELS[model]
         aspect_ratio, image_size = (
             _extract_generation_params(request) if request else (None, None)
         )
 
-        # 默认 aspect ratio
+        # aspect ratio mặc định
         if not aspect_ratio:
             aspect_ratio = DEFAULT_ASPECT
 
-        # 检查支持的 aspect ratio
+        # Kiểm tra aspect ratio được hỗ trợ
         supported_aspects = MODEL_SUPPORTED_ASPECTS.get(base, [])
         if aspect_ratio not in supported_aspects and supported_aspects:
             debug_logger.log_warning(
-                f"[MODEL_RESOLVER] 模型 {base} 不支持 aspectRatio={aspect_ratio}，"
-                f"降级到 {DEFAULT_ASPECT}"
+                f"[MODEL_RESOLVER] Mô hình {base} không hỗ trợ aspectRatio={aspect_ratio}, "
+                f"downgrade về {DEFAULT_ASPECT}"
             )
             aspect_ratio = DEFAULT_ASPECT
 
-        # 拼接模型名
+        # Ghép tên mô hình
         resolved = f"{base}-{aspect_ratio}"
 
-        # 检查支持的 imageSize
+        # Kiểm tra imageSize được hỗ trợ
         if image_size and image_size != "1k":
             supported_sizes = MODEL_SUPPORTED_SIZES.get(base, [])
             if image_size in supported_sizes:
                 resolved = f"{resolved}-{image_size}"
             else:
                 debug_logger.log_warning(
-                    f"[MODEL_RESOLVER] 模型 {base} 不支持 imageSize={image_size}，忽略"
+                    f"[MODEL_RESOLVER] Mô hình {base} không hỗ trợ imageSize={image_size}, bỏ qua"
                 )
 
-        # 最终验证
+        # Xác thực cuối cùng
         if model_config and resolved not in model_config:
             debug_logger.log_warning(
-                f"[MODEL_RESOLVER] 解析后的模型名 {resolved} 不在 MODEL_CONFIG 中，"
-                f"回退到原始模型名 {model}"
+                f"[MODEL_RESOLVER] Tên mô hình sau phân giải {resolved} không có trong MODEL_CONFIG, "
+                f"fallback về tên mô hình gốc {model}"
             )
             return model
 
         debug_logger.log_info(
-            f"[MODEL_RESOLVER] 模型名转换: {model} → {resolved} "
+            f"[MODEL_RESOLVER] Chuyển đổi tên mô hình: {model} → {resolved} "
             f"(aspectRatio={aspect_ratio}, imageSize={image_size or 'default'})"
         )
         return resolved
 
-    # ────── 视频模型解析 ──────
+    # ────── Phân giải mô hình video ──────
     if model in VIDEO_BASE_MODELS:
         aspect_ratio, _ = (
             _extract_generation_params(request) if request else (None, None)
         )
 
-        # 视频默认横屏
+        # Video mặc định ngang màn hình
         if not aspect_ratio or aspect_ratio not in ("landscape", "portrait"):
             aspect_ratio = "landscape"
 
@@ -484,27 +484,27 @@ def resolve_model_name(
 
         if resolved and model_config and resolved in model_config:
             debug_logger.log_info(
-                f"[MODEL_RESOLVER] 视频模型名转换: {model} → {resolved} "
+                f"[MODEL_RESOLVER] Chuyển đổi tên mô hình video: {model} → {resolved} "
                 f"(aspectRatio={aspect_ratio})"
             )
             return resolved
 
         debug_logger.log_warning(
-            f"[MODEL_RESOLVER] 视频模型 {model} 解析失败 (aspect={aspect_ratio})，"
-            f"使用原始模型名"
+            f"[MODEL_RESOLVER] Phân giải mô hình video {model} thất bại (aspect={aspect_ratio}), "
+            f"dùng tên mô hình gốc"
         )
         return model
 
-    # 如果已经是有效的 MODEL_CONFIG key，直接返回
+    # Nếu đã là key MODEL_CONFIG hợp lệ, trả về luôn
     if model_config and model in model_config:
         return model
 
-    # 未知模型名，原样返回（由下游 MODEL_CONFIG 校验报错）
+    # Tên mô hình không xác định, trả về nguyên bản (sẽ báo lỗi khi MODEL_CONFIG phía dưới validate)
     return model
 
 
 def get_base_model_aliases() -> Dict[str, str]:
-    """返回所有简化模型名（别名）及其描述，用于 /v1/models 接口展示。"""
+    """Trả về tất cả tên rút gọn (alias) của mô hình kèm mô tả, dùng cho endpoint /v1/models."""
     aliases = {}
 
     for alias, base in IMAGE_BASE_MODELS.items():

@@ -11,9 +11,9 @@ class ProxyManager:
         self.db = db
 
     def _parse_proxy_line(self, line: str) -> Optional[str]:
-        """将用户输入代理转换为标准 URL 格式。
+        """Chuẩn hóa địa chỉ proxy người dùng nhập về dạng URL chuẩn.
 
-        支持格式：
+        Định dạng hỗ trợ:
         - http://user:pass@host:port
         - https://user:pass@host:port
         - socks5://user:pass@host:port
@@ -45,13 +45,13 @@ class ProxyManager:
                 return f"socks5://{username}:{password}@{host}:{port}"
             return None
 
-        # 协议前缀格式
+        # Định dạng có tiền tố giao thức
         if line.startswith(("http://", "https://", "socks5://", "socks5h://")):
-            # 已是标准 user:pass@host:port（或 host:port）
+            # Đã là dạng chuẩn user:pass@host:port (hoặc host:port)
             if "@" in line:
                 return line
 
-            # 兼容 protocol://host:port:user:pass
+            # Tương thích với protocol://host:port:user:pass
             try:
                 protocol_end = line.index("://") + 3
                 protocol = line[:protocol_end]
@@ -69,11 +69,11 @@ class ProxyManager:
                 return None
             return None
 
-        # 无协议，带 @：默认按 http 处理
+        # Không có giao thức, có @: mặc định xử lý như http
         if "@" in line:
             return f"http://{line}"
 
-        # 无协议，按冒号数量判断
+        # Không có giao thức, xét theo số dấu hai chấm
         parts = line.split(":")
         if len(parts) == 2 and parts[1].isdigit():
             # host:port
@@ -90,7 +90,7 @@ class ProxyManager:
         return None
 
     def normalize_proxy_url(self, proxy_url: Optional[str]) -> Optional[str]:
-        """标准化代理地址，空值返回 None，非法格式抛 ValueError。"""
+        """Chuẩn hóa địa chỉ proxy; giá trị rỗng trả về None, định dạng sai ném ValueError."""
         if proxy_url is None:
             return None
 
@@ -101,7 +101,7 @@ class ProxyManager:
         parsed = self._parse_proxy_line(raw)
         if not parsed:
             raise ValueError(
-                "代理地址格式错误，支持示例："
+                "Địa chỉ proxy sai định dạng, ví dụ hợp lệ:"
                 "http://user:pass@host:port / "
                 "socks5://user:pass@host:port / "
                 "host:port:user:pass / st5 host:port:user:pass"
@@ -109,7 +109,7 @@ class ProxyManager:
         return parsed
 
     async def get_proxy_url(self) -> Optional[str]:
-        """兼容旧调用：返回请求代理地址"""
+        """Tương thích caller cũ: trả về địa chỉ proxy cho request"""
         return await self.get_request_proxy_url()
 
     async def get_request_proxy_url(self) -> Optional[str]:

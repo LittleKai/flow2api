@@ -80,7 +80,7 @@ class Config:
 
     @property
     def flow_image_request_timeout(self) -> int:
-        """图片生成单次 HTTP 请求超时(秒)。"""
+        """Timeout một lần gọi HTTP sinh ảnh (giây)."""
         default_timeout = min(self.flow_timeout, 40)
         timeout = self._config.get("flow", {}).get(
             "image_request_timeout",
@@ -93,7 +93,7 @@ class Config:
 
     @property
     def flow_image_timeout_retry_count(self) -> int:
-        """图片生成遇到网络超时时的快速重试次数。"""
+        """Số lần retry nhanh khi sinh ảnh gặp timeout mạng."""
         retry_count = self._config.get("flow", {}).get("image_timeout_retry_count", 1)
         try:
             return max(0, min(3, int(retry_count)))
@@ -102,7 +102,7 @@ class Config:
 
     @property
     def flow_image_timeout_retry_delay(self) -> float:
-        """图片生成网络超时重试前等待秒数。"""
+        """Số giây chờ trước khi retry timeout mạng khi sinh ảnh."""
         delay = self._config.get("flow", {}).get("image_timeout_retry_delay", 0.8)
         try:
             return max(0.0, min(5.0, float(delay)))
@@ -111,7 +111,7 @@ class Config:
 
     @property
     def flow_image_timeout_use_media_proxy_fallback(self) -> bool:
-        """网络超时时是否切换媒体代理重试。"""
+        """Có chuyển sang media proxy để retry khi gặp timeout mạng hay không."""
         return bool(
             self._config.get("flow", {}).get(
                 "image_timeout_use_media_proxy_fallback",
@@ -121,7 +121,7 @@ class Config:
 
     @property
     def flow_image_prefer_media_proxy(self) -> bool:
-        """图片生成是否优先走媒体代理链路。"""
+        """Sinh ảnh có ưu tiên đi qua chuỗi media proxy hay không."""
         return bool(
             self._config.get("flow", {}).get(
                 "image_prefer_media_proxy",
@@ -131,7 +131,7 @@ class Config:
 
     @property
     def flow_image_slot_wait_timeout(self) -> float:
-        """图片硬并发槽位等待超时(秒)。"""
+        """Timeout chờ slot concurrency cứng cho ảnh (giây)."""
         timeout = self._config.get("flow", {}).get("image_slot_wait_timeout", 120)
         try:
             return max(1.0, min(600.0, float(timeout)))
@@ -140,7 +140,7 @@ class Config:
 
     @property
     def flow_image_launch_soft_limit(self) -> int:
-        """图片生成前置发车软并发上限(0 表示关闭软整形，仅使用硬并发)。"""
+        """Giới hạn soft concurrency pre-dispatch cho sinh ảnh (0 = tắt, chỉ dùng hard concurrency)."""
         value = self._config.get("flow", {}).get("image_launch_soft_limit", 0)
         try:
             return max(0, min(200, int(value)))
@@ -149,7 +149,7 @@ class Config:
 
     @property
     def flow_image_launch_wait_timeout(self) -> float:
-        """图片前置发车软并发等待超时(秒)。"""
+        """Timeout chờ soft concurrency pre-dispatch cho ảnh (giây)."""
         timeout = self._config.get("flow", {}).get("image_launch_wait_timeout", 180)
         try:
             return max(1.0, min(600.0, float(timeout)))
@@ -158,7 +158,7 @@ class Config:
 
     @property
     def flow_image_launch_stagger_ms(self) -> int:
-        """图片请求前置发车间隔(毫秒)，用于平滑同批突发。"""
+        """Khoảng cách pre-dispatch cho request ảnh (ms), để làm mượt burst cùng batch."""
         value = self._config.get("flow", {}).get("image_launch_stagger_ms", 0)
         try:
             return max(0, min(5000, int(value)))
@@ -167,7 +167,7 @@ class Config:
 
     @property
     def flow_video_slot_wait_timeout(self) -> float:
-        """视频硬并发槽位等待超时(秒)。"""
+        """Timeout chờ slot concurrency cứng cho video (giây)."""
         timeout = self._config.get("flow", {}).get("video_slot_wait_timeout", 120)
         try:
             return max(1.0, min(600.0, float(timeout)))
@@ -176,7 +176,7 @@ class Config:
 
     @property
     def flow_video_launch_soft_limit(self) -> int:
-        """视频生成前置发车软并发上限(0 表示关闭软整形，仅使用硬并发)。"""
+        """Giới hạn soft concurrency pre-dispatch cho sinh video (0 = tắt, chỉ dùng hard concurrency)."""
         value = self._config.get("flow", {}).get("video_launch_soft_limit", 0)
         try:
             return max(0, min(200, int(value)))
@@ -185,7 +185,7 @@ class Config:
 
     @property
     def flow_video_launch_wait_timeout(self) -> float:
-        """视频前置发车软并发等待超时(秒)。"""
+        """Timeout chờ soft concurrency pre-dispatch cho video (giây)."""
         timeout = self._config.get("flow", {}).get("video_launch_wait_timeout", 180)
         try:
             return max(1.0, min(600.0, float(timeout)))
@@ -194,7 +194,7 @@ class Config:
 
     @property
     def flow_video_launch_stagger_ms(self) -> int:
-        """视频请求前置发车间隔(毫秒)，用于平滑同批突发。"""
+        """Khoảng cách pre-dispatch cho request video (ms), để làm mượt burst cùng batch."""
         value = self._config.get("flow", {}).get("video_launch_stagger_ms", 0)
         try:
             return max(0, min(5000, int(value)))
@@ -373,18 +373,18 @@ class Config:
 
     @property
     def browser_launch_background(self) -> bool:
-        """有头浏览器打码是否默认后台启动，避免抢占前台窗口。"""
+        """Trình duyệt có giao diện giải Captcha mặc định có chạy nền không (tránh chiếm cửa sổ foreground)."""
         return self._config.get("captcha", {}).get("browser_launch_background", True)
 
     def set_browser_launch_background(self, enabled: bool):
-        """设置有头浏览器打码是否后台启动。"""
+        """Đặt trình duyệt có giao diện giải Captcha có chạy nền không."""
         if "captcha" not in self._config:
             self._config["captcha"] = {}
         self._config["captcha"]["browser_launch_background"] = bool(enabled)
 
     @property
     def browser_recaptcha_settle_seconds(self) -> float:
-        """有头打码在 reload/clr 就绪后的额外等待秒数。"""
+        """Số giây chờ thêm sau khi reload/clr sẵn sàng với chế độ giải Captcha có giao diện."""
         value = self._config.get("captcha", {}).get("browser_recaptcha_settle_seconds", 3.0)
         try:
             return max(0.0, min(10.0, float(value)))
@@ -401,16 +401,16 @@ class Config:
 
     @property
     def personal_max_resident_tabs(self) -> int:
-        """内置浏览器打码的共享标签页上限"""
+        """Giới hạn tab chia sẻ cho Captcha trình duyệt tích hợp."""
         value = self._config.get("captcha", {}).get("personal_max_resident_tabs", 5)
         try:
-            return max(1, min(50, int(value)))  # 限制在1-50之间
+            return max(1, min(50, int(value)))  # Giới hạn trong khoảng 1-50
         except Exception:
             return 5
 
     @property
     def personal_project_pool_size(self) -> int:
-        """单个 Token 默认维护的项目池数量，仅影响项目轮换。"""
+        """Số lượng project pool mặc định duy trì cho mỗi Token, chỉ ảnh hưởng việc luân chuyển project."""
         value = self._config.get("captcha", {}).get("personal_project_pool_size", 4)
         try:
             return max(1, min(50, int(value)))
@@ -419,7 +419,7 @@ class Config:
 
     @property
     def personal_idle_tab_ttl_seconds(self) -> int:
-        """内置浏览器打码标签页空闲超时(秒)"""
+        """Timeout nhàn rỗi cho tab Captcha trình duyệt tích hợp (giây)."""
         value = self._config.get("captcha", {}).get("personal_idle_tab_ttl_seconds", 600)
         try:
             return max(60, int(value))
@@ -427,19 +427,19 @@ class Config:
             return 600
 
     def set_personal_max_resident_tabs(self, value: int):
-        """设置内置浏览器打码的共享标签页上限"""
+        """Đặt giới hạn tab chia sẻ cho Captcha trình duyệt tích hợp."""
         if "captcha" not in self._config:
             self._config["captcha"] = {}
         self._config["captcha"]["personal_max_resident_tabs"] = max(1, min(50, int(value)))
 
     def set_personal_project_pool_size(self, value: int):
-        """设置单个 Token 默认维护的项目池数量，仅影响项目轮换"""
+        """Đặt số lượng project pool mặc định duy trì cho mỗi Token, chỉ ảnh hưởng việc luân chuyển project."""
         if "captcha" not in self._config:
             self._config["captcha"] = {}
         self._config["captcha"]["personal_project_pool_size"] = max(1, min(50, int(value)))
 
     def set_personal_idle_tab_ttl_seconds(self, value: int):
-        """设置内置浏览器打码标签页空闲超时(秒)"""
+        """Đặt timeout nhàn rỗi cho tab Captcha trình duyệt tích hợp (giây)."""
         if "captcha" not in self._config:
             self._config["captcha"] = {}
         self._config["captcha"]["personal_idle_tab_ttl_seconds"] = max(60, int(value))
