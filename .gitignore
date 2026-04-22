@@ -41,6 +41,8 @@ logs.txt
 *.swo
 *~
 .DS_Store
+.claude/
+claude.md
 
 # Environment
 .env
